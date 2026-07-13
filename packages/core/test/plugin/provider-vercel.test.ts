@@ -1,12 +1,12 @@
-import { AISDK } from "@opencode-ai/core/aisdk"
+import { AISDK } from "@cybervinci-ai/core/aisdk"
 import { describe, expect } from "bun:test"
 import { Effect } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import { ModelV2 } from "@opencode-ai/core/model"
-import { PluginV2 } from "@opencode-ai/core/plugin"
-import { PluginHost } from "@opencode-ai/core/plugin/host"
-import { VercelPlugin } from "@opencode-ai/core/plugin/provider/vercel"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Catalog } from "@cybervinci-ai/core/catalog"
+import { ModelV2 } from "@cybervinci-ai/core/model"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
+import { PluginHost } from "@cybervinci-ai/core/plugin/host"
+import { VercelPlugin } from "@cybervinci-ai/core/plugin/provider/vercel"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "./fixture"
 
@@ -20,7 +20,7 @@ const addPlugin = Effect.fn(function* () {
 })
 
 describe("VercelPlugin", () => {
-  it.effect("applies legacy lower-case referer headers", () =>
+  it.effect("applies lower-case CYBERVINCI integration headers", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       yield* catalog.transform((catalog) => {
@@ -32,13 +32,12 @@ describe("VercelPlugin", () => {
       yield* addPlugin()
       expect((yield* catalog.provider.get(ProviderV2.ID.make("vercel")))?.request.headers).toEqual({
         Existing: "1",
-        "http-referer": "https://opencode.ai/",
-        "x-title": "opencode",
+        "x-title": "cybervinci",
       })
     }),
   )
 
-  it.effect("does not add legacy upper-case referer headers", () =>
+  it.effect("does not add upper-case CYBERVINCI integration headers", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       yield* catalog.transform((catalog) =>

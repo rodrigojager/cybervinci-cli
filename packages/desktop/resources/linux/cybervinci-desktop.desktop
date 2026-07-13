@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=CYBERVINCI
+Exec=/opt/CYBERVINCI/ai.cybervinci.desktop %U
+Terminal=false
+Type=Application
+Icon=ai.cybervinci.desktop
+StartupWMClass=ai.cybervinci.desktop
+NoDisplay=true
+Comment=Open source AI coding agent
+Categories=Development;

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@opencode-ai/stats-core",
+  "name": "@cybervinci-ai/stats-core",
   "version": "1.17.18",
   "private": true,
   "type": "module",

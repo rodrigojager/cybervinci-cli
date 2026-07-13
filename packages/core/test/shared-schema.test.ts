@@ -1,35 +1,35 @@
 import { expect, test } from "bun:test"
 import { Schema } from "effect"
-import { AgentV2 } from "@opencode-ai/core/agent"
-import { ModelV2 } from "@opencode-ai/core/model"
-import { SessionV2 } from "@opencode-ai/core/session"
-import { Agent } from "@opencode-ai/schema/agent"
-import { Location } from "@opencode-ai/schema/location"
-import { Model } from "@opencode-ai/schema/model"
-import { AgentAttachment, FileAttachment, Prompt, Source } from "@opencode-ai/schema/prompt"
-import { Provider } from "@opencode-ai/schema/provider"
-import { Project } from "@opencode-ai/schema/project"
-import { ProjectDirectories } from "@opencode-ai/schema/project-directories"
-import { PermissionV1 } from "@opencode-ai/schema/permission-v1"
-import { Session } from "@opencode-ai/schema/session"
-import { SessionInput } from "@opencode-ai/schema/session-input"
-import { SessionMessage } from "@opencode-ai/schema/session-message"
-import { Workspace } from "@opencode-ai/schema/workspace"
-import { Command } from "@opencode-ai/schema/command"
-import { Connection } from "@opencode-ai/schema/connection"
-import { Credential } from "@opencode-ai/schema/credential"
-import { FileSystem } from "@opencode-ai/schema/filesystem"
-import { Integration } from "@opencode-ai/schema/integration"
-import { LLM } from "@opencode-ai/schema/llm"
-import { Permission } from "@opencode-ai/schema/permission"
-import { Plugin } from "@opencode-ai/schema/plugin"
-import { Pty } from "@opencode-ai/schema/pty"
-import { Reference } from "@opencode-ai/schema/reference"
-import { SessionTodo } from "@opencode-ai/schema/session-todo"
-import { Skill } from "@opencode-ai/schema/skill"
-import { AbsolutePath, DateTimeUtcFromMillis, optional, statics } from "@opencode-ai/schema/schema"
-import { ProviderV2 } from "@opencode-ai/core/provider"
-import { PluginV2 } from "@opencode-ai/core/plugin"
+import { AgentV2 } from "@cybervinci-ai/core/agent"
+import { ModelV2 } from "@cybervinci-ai/core/model"
+import { SessionV2 } from "@cybervinci-ai/core/session"
+import { Agent } from "@cybervinci-ai/schema/agent"
+import { Location } from "@cybervinci-ai/schema/location"
+import { Model } from "@cybervinci-ai/schema/model"
+import { AgentAttachment, FileAttachment, Prompt, Source } from "@cybervinci-ai/schema/prompt"
+import { Provider } from "@cybervinci-ai/schema/provider"
+import { Project } from "@cybervinci-ai/schema/project"
+import { ProjectDirectories } from "@cybervinci-ai/schema/project-directories"
+import { PermissionV1 } from "@cybervinci-ai/schema/permission-v1"
+import { Session } from "@cybervinci-ai/schema/session"
+import { SessionInput } from "@cybervinci-ai/schema/session-input"
+import { SessionMessage } from "@cybervinci-ai/schema/session-message"
+import { Workspace } from "@cybervinci-ai/schema/workspace"
+import { Command } from "@cybervinci-ai/schema/command"
+import { Connection } from "@cybervinci-ai/schema/connection"
+import { Credential } from "@cybervinci-ai/schema/credential"
+import { FileSystem } from "@cybervinci-ai/schema/filesystem"
+import { Integration } from "@cybervinci-ai/schema/integration"
+import { LLM } from "@cybervinci-ai/schema/llm"
+import { Permission } from "@cybervinci-ai/schema/permission"
+import { Plugin } from "@cybervinci-ai/schema/plugin"
+import { Pty } from "@cybervinci-ai/schema/pty"
+import { Reference } from "@cybervinci-ai/schema/reference"
+import { SessionTodo } from "@cybervinci-ai/schema/session-todo"
+import { Skill } from "@cybervinci-ai/schema/skill"
+import { AbsolutePath, DateTimeUtcFromMillis, optional, statics } from "@cybervinci-ai/schema/schema"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
 
 test("Core reuses the canonical shared schemas", async () => {
   const [
@@ -55,27 +55,27 @@ test("Core reuses the canonical shared schemas", async () => {
     coreSchema,
     coreWorkspace,
   ] = await Promise.all([
-    import("@opencode-ai/core/command"),
-    import("@opencode-ai/core/integration/connection"),
-    import("@opencode-ai/core/credential"),
-    import("@opencode-ai/core/filesystem"),
-    import("@opencode-ai/core/integration"),
-    import("@opencode-ai/core/location"),
-    import("@opencode-ai/llm"),
-    import("@opencode-ai/core/permission"),
-    import("@opencode-ai/core/v1/permission"),
-    import("@opencode-ai/core/project/copy"),
-    import("@opencode-ai/core/pty"),
-    import("@opencode-ai/core/project/schema"),
-    import("@opencode-ai/core/reference"),
-    import("@opencode-ai/core/session/input"),
-    import("@opencode-ai/core/session/message"),
-    import("@opencode-ai/core/session/todo"),
-    import("@opencode-ai/core/session/prompt"),
-    import("@opencode-ai/core/skill"),
-    import("@opencode-ai/core/v2-schema"),
-    import("@opencode-ai/core/schema"),
-    import("@opencode-ai/core/workspace"),
+    import("@cybervinci-ai/core/command"),
+    import("@cybervinci-ai/core/integration/connection"),
+    import("@cybervinci-ai/core/credential"),
+    import("@cybervinci-ai/core/filesystem"),
+    import("@cybervinci-ai/core/integration"),
+    import("@cybervinci-ai/core/location"),
+    import("@cybervinci-ai/llm"),
+    import("@cybervinci-ai/core/permission"),
+    import("@cybervinci-ai/core/v1/permission"),
+    import("@cybervinci-ai/core/project/copy"),
+    import("@cybervinci-ai/core/pty"),
+    import("@cybervinci-ai/core/project/schema"),
+    import("@cybervinci-ai/core/reference"),
+    import("@cybervinci-ai/core/session/input"),
+    import("@cybervinci-ai/core/session/message"),
+    import("@cybervinci-ai/core/session/todo"),
+    import("@cybervinci-ai/core/session/prompt"),
+    import("@cybervinci-ai/core/skill"),
+    import("@cybervinci-ai/core/v2-schema"),
+    import("@cybervinci-ai/core/schema"),
+    import("@cybervinci-ai/core/workspace"),
   ])
 
   const schemas = [

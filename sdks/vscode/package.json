@@ -1,13 +1,9 @@
 {
-  "name": "opencode",
-  "displayName": "opencode",
-  "description": "opencode for VS Code",
+  "name": "cybervinci",
+  "displayName": "CYBERVINCI",
+  "description": "CYBERVINCI for VS Code",
   "version": "1.17.18",
-  "publisher": "sst-dev",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/anomalyco/opencode"
-  },
+  "publisher": "cybervinci",
   "license": "MIT",
   "icon": "images/icon.png",
   "galleryBanner": {
@@ -25,54 +21,54 @@
   "contributes": {
     "commands": [
       {
-        "command": "opencode.openTerminal",
-        "title": "Open opencode",
+        "command": "cybervinci.openTerminal",
+        "title": "Open cybervinci",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
         }
       },
       {
-        "command": "opencode.openNewTerminal",
-        "title": "Open opencode in new tab",
+        "command": "cybervinci.openNewTerminal",
+        "title": "Open cybervinci in new tab",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
         }
       },
       {
-        "command": "opencode.addFilepathToTerminal",
+        "command": "cybervinci.addFilepathToTerminal",
         "title": "Add Filepath to Terminal"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "opencode.openNewTerminal",
+          "command": "cybervinci.openNewTerminal",
           "group": "navigation"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "opencode.openTerminal",
-        "title": "Run opencode",
+        "command": "cybervinci.openTerminal",
+        "title": "Run cybervinci",
         "key": "cmd+escape",
         "mac": "cmd+escape",
         "win": "ctrl+escape",
         "linux": "ctrl+escape"
       },
       {
-        "command": "opencode.openNewTerminal",
-        "title": "Run opencode",
+        "command": "cybervinci.openNewTerminal",
+        "title": "Run cybervinci",
         "key": "cmd+shift+escape",
         "mac": "cmd+shift+escape",
         "win": "ctrl+shift+escape",
         "linux": "ctrl+shift+escape"
       },
       {
-        "command": "opencode.addFilepathToTerminal",
-        "title": "opencode: Insert At-Mentioned",
+        "command": "cybervinci.addFilepathToTerminal",
+        "title": "cybervinci: Insert At-Mentioned",
         "key": "cmd+alt+k",
         "mac": "cmd+alt+k",
         "win": "ctrl+alt+K",

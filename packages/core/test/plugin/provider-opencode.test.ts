@@ -1,14 +1,14 @@
 import { describe, expect } from "bun:test"
 import { Effect } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import { Credential } from "@opencode-ai/core/credential"
-import { EventV2 } from "@opencode-ai/core/event"
-import { Integration } from "@opencode-ai/core/integration"
-import { ModelV2 } from "@opencode-ai/core/model"
-import { PluginV2 } from "@opencode-ai/core/plugin"
-import { PluginHost } from "@opencode-ai/core/plugin/host"
-import { OpencodePlugin } from "@opencode-ai/core/plugin/provider/opencode"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Catalog } from "@cybervinci-ai/core/catalog"
+import { Credential } from "@cybervinci-ai/core/credential"
+import { EventV2 } from "@cybervinci-ai/core/event"
+import { Integration } from "@cybervinci-ai/core/integration"
+import { ModelV2 } from "@cybervinci-ai/core/model"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
+import { PluginHost } from "@cybervinci-ai/core/plugin/host"
+import { OpenCodePlugin } from "@cybervinci-ai/core/plugin/provider/opencode"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "./fixture"
 
@@ -19,7 +19,7 @@ const addPlugin = Effect.fn(function* () {
   const host = yield* PluginHost.make(plugin)
   const events = yield* EventV2.Service
   const integration = yield* Integration.Service
-  yield* OpencodePlugin.effect(host).pipe(
+  yield* OpenCodePlugin.effect(host).pipe(
     Effect.provideService(EventV2.Service, events),
     Effect.provideService(Integration.Service, integration),
   )
@@ -67,7 +67,7 @@ function withEnv<A, E, R>(vars: Record<string, string | undefined>, effect: () =
 
 const cost = (input: number, output = 0) => [{ input, output, cache: { read: 0, write: 0 } }]
 
-describe("OpencodePlugin", () => {
+describe("OpenCodePlugin", () => {
   it.effect("registers account and service account methods", () =>
     Effect.gen(function* () {
       yield* addPlugin()
@@ -82,7 +82,7 @@ describe("OpencodePlugin", () => {
     }),
   )
 
-  it.live("loads providers and models from the connected OpenCode server", () =>
+  it.live("loads providers and models from the connected OpenCode service", () =>
     Effect.acquireUseRelease(
       Effect.sync(() => {
         const authorization: Array<string | null> = []
@@ -368,7 +368,7 @@ describe("OpencodePlugin", () => {
     ),
   )
 
-  it.effect("ignores non-opencode providers and models", () =>
+  it.effect("ignores non-OpenCode providers and models", () =>
     withEnv({ OPENCODE_API_KEY: undefined }, () =>
       Effect.gen(function* () {
         const catalog = yield* Catalog.Service
@@ -394,7 +394,7 @@ describe("OpencodePlugin", () => {
     ),
   )
 
-  it.effect("prefers gpt-5-nano as the opencode small model", () =>
+  it.effect("prefers gpt-5-nano as the OpenCode small model", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       const providerID = ProviderV2.ID.opencode

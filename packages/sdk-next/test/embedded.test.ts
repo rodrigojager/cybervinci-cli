@@ -2,22 +2,22 @@ import { expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { Flag } from "@opencode-ai/core/flag/flag"
+import { Flag } from "@cybervinci-ai/core/flag/flag"
 import { Deferred, Effect, Latch, Option, Schema, Stream } from "effect"
-import type { OpenCodeEvent } from "../src"
+import type { CYBERVINCIEvent } from "../src"
 
 test("embedded client uses the real router and handlers", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "opencode-embedded-"))
-  const database = Flag.OPENCODE_DB
-  Flag.OPENCODE_DB = join(directory, "opencode.sqlite")
-  const { AbsolutePath, Agent, Location, Model, OpenCode, Prompt, Provider, Session, Tool } = await import("../src")
+  const directory = await mkdtemp(join(tmpdir(), "cybervinci-embedded-"))
+  const database = Flag.CYBERVINCI_DB
+  Flag.CYBERVINCI_DB = join(directory, "cybervinci.sqlite")
+  const { AbsolutePath, Agent, Location, Model, CYBERVINCI, Prompt, Provider, Session, Tool } = await import("../src")
   const sessionID = Session.ID.make(`ses_embedded_${crypto.randomUUID()}`)
   const model = Model.Ref.make({ id: Model.ID.make("embedded"), providerID: Provider.ID.make("test") })
 
   try {
     const program = Effect.gen(function* () {
-      const opencode = yield* OpenCode.create()
-      yield* opencode.tools.register({
+      const cybervinci = yield* CYBERVINCI.create()
+      yield* cybervinci.tools.register({
         embedded_tool: Tool.make({
           description: "Embedded test tool",
           input: Schema.Struct({}),
@@ -26,54 +26,54 @@ test("embedded client uses the real router and handlers", async () => {
         }),
       })
 
-      const created = yield* opencode.sessions.create({
+      const created = yield* cybervinci.sessions.create({
         id: sessionID,
         agent: Agent.ID.make("build"),
         location: Location.Ref.make({ directory: AbsolutePath.make(directory) }),
       })
-      yield* opencode.sessions.switchModel({ sessionID, model })
-      const selected = yield* opencode.sessions.get({ sessionID })
-      const page = yield* opencode.sessions.list({ directory: AbsolutePath.make(directory) })
-      const active = yield* opencode.sessions.active()
-      const admitted = yield* opencode.sessions.prompt({
+      yield* cybervinci.sessions.switchModel({ sessionID, model })
+      const selected = yield* cybervinci.sessions.get({ sessionID })
+      const page = yield* cybervinci.sessions.list({ directory: AbsolutePath.make(directory) })
+      const active = yield* cybervinci.sessions.active()
+      const admitted = yield* cybervinci.sessions.prompt({
         sessionID,
         prompt: Prompt.make({ text: "Do not run" }),
         resume: false,
       })
-      const context = yield* opencode.sessions.context({ sessionID })
-      const wake = yield* opencode.sessions.prompt({
+      const context = yield* cybervinci.sessions.context({ sessionID })
+      const wake = yield* cybervinci.sessions.prompt({
         sessionID,
         prompt: Prompt.make({ text: "Promote this input" }),
       })
-      const prompted = yield* opencode.sessions.events({ sessionID }).pipe(
+      const prompted = yield* cybervinci.sessions.events({ sessionID }).pipe(
         Stream.filter((event) => event.type === "session.next.prompted" && event.data.messageID === wake.id),
         Stream.runHead,
         Effect.timeout("10 seconds"),
         Effect.map(Option.getOrThrow),
       )
-      const wakeContext = yield* opencode.sessions.context({ sessionID })
-      const event = yield* opencode.sessions
+      const wakeContext = yield* cybervinci.sessions.context({ sessionID })
+      const event = yield* cybervinci.sessions
         .events({ sessionID })
         .pipe(Stream.take(1), Stream.runHead, Effect.map(Option.getOrUndefined))
       const modelMessage = Option.fromNullishOr(context.find((message) => message.type === "model-switched")).pipe(
         Option.getOrThrow,
       )
-      const message = yield* opencode.sessions.message({ sessionID, messageID: modelMessage.id })
-      yield* opencode.sessions.interrupt({ sessionID })
-      const other = yield* opencode.sessions.create({
+      const message = yield* cybervinci.sessions.message({ sessionID, messageID: modelMessage.id })
+      yield* cybervinci.sessions.interrupt({ sessionID })
+      const other = yield* cybervinci.sessions.create({
         location: Location.Ref.make({ directory: AbsolutePath.make(directory) }),
       })
       const missingSessionID = Session.ID.make(`ses_missing_${crypto.randomUUID()}`)
       const missing = yield* Effect.all(
         [
-          opencode.sessions.events({ sessionID: missingSessionID }).pipe(Stream.runHead, Effect.flip),
-          opencode.sessions.interrupt({ sessionID: missingSessionID }).pipe(Effect.flip),
-          opencode.sessions.message({ sessionID: missingSessionID, messageID: modelMessage.id }).pipe(Effect.flip),
+          cybervinci.sessions.events({ sessionID: missingSessionID }).pipe(Stream.runHead, Effect.flip),
+          cybervinci.sessions.interrupt({ sessionID: missingSessionID }).pipe(Effect.flip),
+          cybervinci.sessions.message({ sessionID: missingSessionID, messageID: modelMessage.id }).pipe(Effect.flip),
         ],
         { concurrency: "unbounded" },
       )
       const missingMessage = yield* Effect.flip(
-        opencode.sessions.message({
+        cybervinci.sessions.message({
           sessionID: other.id,
           messageID: modelMessage.id,
         }),
@@ -99,24 +99,24 @@ test("embedded client uses the real router and handlers", async () => {
     })
     await Effect.runPromise(Effect.scoped(program))
   } finally {
-    Flag.OPENCODE_DB = database
+    Flag.CYBERVINCI_DB = database
     await rm(directory, { recursive: true, force: true })
   }
 })
 
 test("Location-owned runner events reach the ready global client", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "opencode-embedded-events-"))
-  const database = Flag.OPENCODE_DB
-  Flag.OPENCODE_DB = join(directory, "opencode.sqlite")
-  const { AbsolutePath, Location, OpenCode, Prompt, Session } = await import("../src")
+  const directory = await mkdtemp(join(tmpdir(), "cybervinci-embedded-events-"))
+  const database = Flag.CYBERVINCI_DB
+  Flag.CYBERVINCI_DB = join(directory, "cybervinci.sqlite")
+  const { AbsolutePath, Location, CYBERVINCI, Prompt, Session } = await import("../src")
   const sessionID = Session.ID.make(`ses_embedded_${crypto.randomUUID()}`)
 
   try {
     const program = Effect.gen(function* () {
-      const opencode = yield* OpenCode.create()
+      const cybervinci = yield* CYBERVINCI.create()
       const connected = yield* Latch.make(false)
-      const prompted = yield* Deferred.make<OpenCodeEvent>()
-      yield* opencode.events.subscribe().pipe(
+      const prompted = yield* Deferred.make<CYBERVINCIEvent>()
+      yield* cybervinci.events.subscribe().pipe(
         Stream.runForEach((event) =>
           event.type === "server.connected"
             ? connected.open
@@ -127,39 +127,39 @@ test("Location-owned runner events reach the ready global client", async () => {
         Effect.forkScoped,
       )
       yield* connected.await
-      yield* opencode.sessions.create({
+      yield* cybervinci.sessions.create({
         id: sessionID,
         location: Location.Ref.make({ directory: AbsolutePath.make(directory) }),
       })
-      yield* opencode.sessions.prompt({ sessionID, prompt: Prompt.make({ text: "Observe this input" }) })
+      yield* cybervinci.sessions.prompt({ sessionID, prompt: Prompt.make({ text: "Observe this input" }) })
 
       const event = yield* Deferred.await(prompted).pipe(Effect.timeout("4 seconds"))
       expect(event.durable).toEqual(expect.objectContaining({ aggregateID: sessionID, seq: expect.any(Number) }))
     })
     await Effect.runPromise(Effect.scoped(program))
   } finally {
-    Flag.OPENCODE_DB = database
+    Flag.CYBERVINCI_DB = database
     await rm(directory, { recursive: true, force: true })
   }
 }, 10_000)
 
 test("independent embedded hosts do not share live notifications", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "opencode-embedded-hosts-"))
-  const database = Flag.OPENCODE_DB
-  Flag.OPENCODE_DB = join(directory, "opencode.sqlite")
-  const { AbsolutePath, Agent, Location, OpenCode, Session } = await import("../src")
+  const directory = await mkdtemp(join(tmpdir(), "cybervinci-embedded-hosts-"))
+  const database = Flag.CYBERVINCI_DB
+  Flag.CYBERVINCI_DB = join(directory, "cybervinci.sqlite")
+  const { AbsolutePath, Agent, Location, CYBERVINCI, Session } = await import("../src")
   const sessionID = Session.ID.make(`ses_embedded_${crypto.randomUUID()}`)
 
   try {
     const program = Effect.gen(function* () {
-      const first = yield* OpenCode.create()
-      const second = yield* OpenCode.create()
+      const first = yield* CYBERVINCI.create()
+      const second = yield* CYBERVINCI.create()
       const firstReady = yield* Latch.make(false)
       const secondReady = yield* Latch.make(false)
       const firstEvent = yield* Latch.make(false)
       const secondEvent = yield* Latch.make(false)
       const observe = (ready: Latch.Latch, event: Latch.Latch) =>
-        Stream.runForEach((notification: OpenCodeEvent) =>
+        Stream.runForEach((notification: CYBERVINCIEvent) =>
           notification.type === "server.connected"
             ? ready.open
             : notification.type === "session.next.agent.switched" && notification.data.sessionID === sessionID
@@ -181,32 +181,32 @@ test("independent embedded hosts do not share live notifications", async () => {
     })
     await Effect.runPromise(Effect.scoped(program))
   } finally {
-    Flag.OPENCODE_DB = database
+    Flag.CYBERVINCI_DB = database
     await rm(directory, { recursive: true, force: true })
   }
 }, 10_000)
 
 test("embedded client is available as a Layer service", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "opencode-embedded-layer-"))
-  const database = Flag.OPENCODE_DB
-  Flag.OPENCODE_DB = join(directory, "opencode.sqlite")
-  const { AbsolutePath, Location, OpenCode, Session } = await import("../src")
+  const directory = await mkdtemp(join(tmpdir(), "cybervinci-embedded-layer-"))
+  const database = Flag.CYBERVINCI_DB
+  Flag.CYBERVINCI_DB = join(directory, "cybervinci.sqlite")
+  const { AbsolutePath, Location, CYBERVINCI, Session } = await import("../src")
   const sessionID = Session.ID.make(`ses_embedded_${crypto.randomUUID()}`)
 
   try {
     const created = await Effect.runPromise(
       Effect.gen(function* () {
-        const opencode = yield* OpenCode.Service
-        return yield* opencode.sessions.create({
+        const cybervinci = yield* CYBERVINCI.Service
+        return yield* cybervinci.sessions.create({
           id: sessionID,
           location: Location.Ref.make({ directory: AbsolutePath.make(directory) }),
         })
-      }).pipe(Effect.provide(OpenCode.layer), Effect.scoped),
+      }).pipe(Effect.provide(CYBERVINCI.layer), Effect.scoped),
     )
 
     expect(created.id).toBe(sessionID)
   } finally {
-    Flag.OPENCODE_DB = database
+    Flag.CYBERVINCI_DB = database
     await rm(directory, { recursive: true, force: true })
   }
 })

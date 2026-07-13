@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import type { LanguageModelV3 } from "@ai-sdk/provider"
-import { define } from "../internal"
+import { define } from "@cybervinci-ai/plugin/v2/effect/plugin"
 import { ProviderV2 } from "../../provider"
 
 type MantleSDK = {

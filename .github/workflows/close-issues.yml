@@ -7,6 +7,7 @@ on:
 
 jobs:
   close:
+    if: vars.CYBERVINCI_MAINTENANCE_REPOSITORY != '' && github.repository == vars.CYBERVINCI_MAINTENANCE_REPOSITORY
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,9 +17,10 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: latest
+          bun-version: 1.3.14
 
       - name: Close stale issues
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          CYBERVINCI_MAINTENANCE_REPOSITORY: ${{ vars.CYBERVINCI_MAINTENANCE_REPOSITORY }}
         run: bun script/github/close-issues.ts

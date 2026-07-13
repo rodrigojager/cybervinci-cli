@@ -1,165 +1,44 @@
 ---
-title: Enterprise
-description: Usa OpenCode in sicurezza nella tua organizzazione.
+title: Organization deployment
+description: Honest operator guidance for deploying CYBERVINCI in an organization.
 ---
 
-import config from "../../../../config.mjs"
-export const email = `mailto:${config.email}`
+CYBERVINCI does not offer a separate enterprise product, hosted control plane, sales channel, pricing plan, or managed SSO service. This page describes what an organization can do with the reviewed source and its own infrastructure.
 
-OpenCode Enterprise e pensato per organizzazioni che vogliono assicurarsi che codice e dati non escano mai dalla propria infrastruttura. Questo e possibile grazie a una config centralizzata che si integra con SSO e con il gateway AI interno.
+## Deployment policy
 
-:::note
-OpenCode non memorizza alcun tuo codice o dato di contesto.
-:::
+Organizations should treat CYBERVINCI as a self-managed compatibility fork:
 
-Per iniziare con OpenCode Enterprise:
+1. Build from a pinned, reviewed commit.
+2. Distribute the resulting binary through an internal software channel.
+3. Configure only approved AI providers and MCP servers.
+4. Apply least-privilege tool permissions and network controls.
+5. Keep credentials in the organization's existing secret-management system.
+6. Validate updates in a staging environment before wider rollout.
 
-1. Fai una prova interna con il tuo team.
-2. **<a href={email}>Contattaci</a>** per parlare di prezzi e opzioni di implementazione.
+External updates are disabled by default in this fork. Any release feed or publishing target must be configured explicitly by the operator.
 
----
+## Data handling
 
-## Prova
+CYBERVINCI keeps local configuration and session state on the machine where it runs. Model requests, tool calls, and enabled integrations can still transmit data to the providers or servers selected by the operator. Review each provider, MCP server, plugin, and command before enabling it.
 
-OpenCode e open source e non memorizza alcun tuo codice o dato di contesto, quindi i tuoi sviluppatori possono semplicemente [iniziare](/docs/) e fare una prova.
+Official OpenCode-hosted services, including OpenCode Zen, OpenCode Go, OpenCode Console, and hosted share pages, are separate services operated by the OpenCode project. CYBERVINCI only preserves compatibility with them. Their terms, retention, pricing, and availability are not controlled by CYBERVINCI.
 
----
+For a local-only policy, disable hosted sharing:
 
-### Gestione dati
-
-**OpenCode non memorizza il tuo codice o i tuoi dati di contesto.** Tutta l'elaborazione avviene in locale o tramite chiamate API dirette al tuo provider AI.
-
-Questo significa che, finche usi un provider di cui ti fidi o un gateway AI interno, puoi usare OpenCode in modo sicuro.
-
-L'unica eccezione e la funzione opzionale `/share`.
-
----
-
-#### Condivisione conversazioni
-
-Se un utente abilita la funzione `/share`, la conversazione e i dati associati vengono inviati al servizio che usiamo per ospitare queste pagine di condivisione su opencode.ai.
-
-I dati sono serviti tramite la rete edge della nostra CDN e vengono messi in cache vicino ai tuoi utenti.
-
-Ti consigliamo di disabilitarla durante la prova.
-
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "share": "disabled"
 }
 ```
 
-[Scopri di più sulla condivisione](/docs/share).
+See [sharing](/docs/share), [permissions](/docs/permissions), [providers](/docs/providers), and [configuration](/docs/config) before deployment.
 
----
+## Identity and gateways
 
-### Proprietà del codice
+CYBERVINCI can use provider credentials and endpoints supplied through its normal configuration. If an organization needs SSO, a private AI gateway, centralized policy enforcement, or audit retention, those capabilities must be supplied and operated by the organization or an explicitly selected vendor. This repository does not claim to provide them as a managed service.
 
-**Sei proprietario di tutto il codice prodotto da OpenCode.** Non ci sono restrizioni di licenza o rivendicazioni di proprieta.
+## Support
 
----
-
-## Prezzi
-
-Usiamo un modello per-seat per OpenCode Enterprise. Se hai un tuo gateway LLM, non addebitiamo i token usati. Per maggiori dettagli su prezzi e opzioni di implementazione, **<a href={email}>contattaci</a>**.
-
----
-
-## Distribuzione
-
-Quando hai completato la prova e sei pronto a usare OpenCode nella tua organizzazione, puoi **<a href={email}>contattarci</a>** per discutere prezzi e opzioni di implementazione.
-
----
-
-### Configurazione centralizzata
-
-Possiamo configurare OpenCode per usare un'unica config centralizzata per tutta l'organizzazione.
-
-Questa config centralizzata puo integrarsi col provider SSO e garantisce che tutti gli utenti accedano solo al gateway AI interno.
-
----
-
-### Integrazione SSO
-
-Tramite la config centralizzata, OpenCode puo integrarsi col provider SSO della tua organizzazione per l'autenticazione.
-
-Questo consente a OpenCode di ottenere credenziali per il gateway AI interno tramite il sistema di identity management esistente.
-
----
-
-### Gateway AI interno
-
-Con la config centralizzata, OpenCode puo anche essere configurato per usare solo il tuo gateway AI interno.
-
-Puoi anche disabilitare tutti gli altri provider AI, assicurandoti che tutte le richieste passino dall'infrastruttura approvata dalla tua organizzazione.
-
----
-
-### Hosting autonomo
-
-Anche se consigliamo di disabilitare le pagine di condivisione per assicurarti che i dati non escano mai dall'organizzazione, possiamo anche aiutarti a ospitarle sulla tua infrastruttura.
-
-Questa funzionalita e nella nostra roadmap. Se ti interessa, **<a href={email}>faccelo sapere</a>**.
-
----
-
-## FAQ
-
-<details>
-<summary>Che cos'e OpenCode Enterprise?</summary>
-
-OpenCode Enterprise e pensato per organizzazioni che vogliono assicurarsi che codice e dati non escano mai dalla propria infrastruttura. Questo e possibile grazie a una config centralizzata che si integra con SSO e con il gateway AI interno.
-
-</details>
-
-<details>
-<summary>Come posso iniziare con OpenCode Enterprise?</summary>
-
-Inizia semplicemente con una prova interna con il tuo team. Per impostazione predefinita OpenCode non memorizza il tuo codice o i dati di contesto, quindi e facile partire.
-
-Poi **<a href={email}>contattaci</a>** per discutere prezzi e opzioni di implementazione.
-
-</details>
-
-<details>
-<summary>Come funziona il pricing enterprise?</summary>
-
-Offriamo pricing enterprise per-seat. Se hai un tuo gateway LLM, non addebitiamo i token usati. Per maggiori dettagli, **<a href={email}>contattaci</a>** per un preventivo su misura in base alle esigenze della tua organizzazione.
-
-</details>
-
-<details>
-<summary>I miei dati sono al sicuro con OpenCode Enterprise?</summary>
-
-Si. OpenCode non memorizza il tuo codice o i dati di contesto. Tutta l'elaborazione avviene in locale o tramite chiamate API dirette al tuo provider AI. Con config centralizzata e integrazione SSO, i dati restano all'interno dell'infrastruttura della tua organizzazione.
-
-</details>
-
-<details>
-<summary>Possiamo usare un registry NPM privato?</summary>
-
-OpenCode supporta registry npm privati tramite il supporto nativo di Bun per i file `.npmrc`. Se la tua organizzazione usa un registry privato, come JFrog Artifactory, Nexus o simili, assicurati che gli sviluppatori siano autenticati prima di eseguire OpenCode.
-
-Per configurare l'autenticazione col registry privato:
-
-```bash
-npm login --registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-```
-
-Questo crea `~/.npmrc` con i dettagli di autenticazione. OpenCode lo rilevera automaticamente.
-
-:::caution
-Devi essere autenticato nel registry privato prima di eseguire OpenCode.
-:::
-
-In alternativa, puoi configurare manualmente un file `.npmrc`:
-
-```bash title="~/.npmrc"
-registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-//your-company.jfrog.io/api/npm/npm-virtual/:_authToken=${NPM_AUTH_TOKEN}
-```
-
-Gli sviluppatori devono essere autenticati nel registry privato prima di eseguire OpenCode per garantire che i pacchetti possano essere installati dal registry enterprise.
-
-</details>
+Use the local `README.md` and `CYBERVINCI.md` for build-specific guidance. Operational support belongs to the maintainer or team that supplied your source checkout or binary.

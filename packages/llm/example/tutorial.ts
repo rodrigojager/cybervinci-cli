@@ -1,7 +1,7 @@
 import { Config, Effect, Formatter, Layer, Schema, Stream } from "effect"
-import { LLM, LLMClient, Message, ProviderID, Tool, ToolRuntime } from "@opencode-ai/llm"
-import { Route, Auth, Endpoint, Framing, Protocol, RequestExecutor, WebSocketExecutor } from "@opencode-ai/llm/route"
-import { OpenAI } from "@opencode-ai/llm/providers"
+import { LLM, LLMClient, Message, ProviderID, Tool, ToolRuntime } from "@cybervinci-ai/llm"
+import { Route, Auth, Endpoint, Framing, Protocol, RequestExecutor, WebSocketExecutor } from "@cybervinci-ai/llm/route"
+import { OpenAI } from "@cybervinci-ai/llm/providers"
 
 /**
  * A runnable walkthrough of the LLM package use-site API.

@@ -1,9 +1,9 @@
-import { SessionMessage } from "@opencode-ai/core/session/message"
-import { SessionV2 } from "@opencode-ai/core/session"
+import { SessionMessage } from "@cybervinci-ai/core/session/message"
+import { SessionV2 } from "@cybervinci-ai/core/session"
 import { Effect, Schema } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Api } from "../api"
-import { InvalidCursorError, SessionNotFoundError, UnknownError } from "@opencode-ai/protocol/errors"
+import { InvalidCursorError, SessionNotFoundError, UnknownError } from "@cybervinci-ai/protocol/errors"
 
 const DefaultMessagesLimit = 50
 

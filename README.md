@@ -1,129 +1,122 @@
-<p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
-    </picture>
-  </a>
-</p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
+# CYBERVINCI
 
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
+CYBERVINCI is an unofficial OpenCode fork focused on preventing tool and MCP execution from leaving sessions permanently busy. This checkout is based on OpenCode `v1.17.18` at commit `b1fc8113948b518835c2a39ece49553cffe9b30c`.
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+The product-facing command, packages, configuration, data paths, TUI, and Desktop shell use the CYBERVINCI name. OpenCode Zen, OpenCode Go, OpenCode Console, and their external provider/protocol identifiers keep their service names for compatibility.
 
----
+## Current status
 
-### Installation
+- The Windows native CLI builds and runs from this checkout.
+- Reliability enforcement is enabled by default for MCP/tool deadlines and terminal settlement.
+- A per-user Windows CLI Setup now installs `cybervinci` globally and registers a Windows uninstaller.
+- There is no public CYBERVINCI release or automatic-update feed yet.
+- GitHub-ready installer assets can be built locally or with the isolated Windows installer workflow; they are not an official public feed until uploaded to a CYBERVINCI-owned repository.
 
-```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
+The implementation notes, reliability controls, and exact artifact path are documented in [CYBERVINCI.md](CYBERVINCI.md).
 
-# Package managers
-npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+## Install on Windows
+
+The local Setup installs into `%USERPROFILE%\.cybervinci`, places the command in `.cybervinci\bin`, adds that directory to the user `PATH`, and appears as `CYBERVINCI CLI` in Windows Installed Apps.
+
+After the release assets are uploaded to an owned GitHub repository, the generated release bootstrap supports one-command installation:
+
+```powershell
+irm https://github.com/OWNER/REPOSITORY/releases/latest/download/install.ps1 | iex
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+The release copy of `install.ps1` has `OWNER/REPOSITORY` embedded by the installer build. It downloads only the CYBERVINCI Setup asset from that repository and verifies its external SHA-256 file before execution.
 
-### Desktop App (BETA)
+## Build locally
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+CYBERVINCI currently targets Bun `1.3.14`. From the repository root on Windows:
 
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
-
-```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
+```powershell
+bun install --frozen-lockfile
+bun run typecheck
+bun run packages/cybervinci/script/build.ts --single --baseline --skip-install
 ```
 
-#### Installation Directory
+The native executables are written to:
 
-The install script respects the following priority order for the installation path:
-
-1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.opencode/bin` - Default fallback
-
-```bash
-# Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
+```text
+packages/cybervinci/dist/cybervinci-windows-x64/bin/cybervinci.exe
+packages/cybervinci/dist/cybervinci-windows-x64-baseline/bin/cybervinci.exe
 ```
 
-### Agents
+Verify and run it directly:
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
+```powershell
+.\packages\cybervinci\dist\cybervinci-windows-x64\bin\cybervinci.exe --version
+.\packages\cybervinci\dist\cybervinci-windows-x64\bin\cybervinci.exe --help
+.\packages\cybervinci\dist\cybervinci-windows-x64\bin\cybervinci.exe
+```
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
+Build the Windows Setup and GitHub release assets with:
 
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
+```powershell
+./installer/windows/build.ps1 `
+  -Version "1.17.18-cybervinci.1" `
+  -Repository "OWNER/REPOSITORY" `
+  -OutputDirectory "./dist/windows-installer"
+```
 
-Learn more about [agents](https://opencode.ai/docs/agents).
+For a local Unix-style installation, pass a binary you built or verified:
 
-### Documentation
+```bash
+./install --binary /absolute/path/to/cybervinci
+```
 
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
+The Bash installer remains intended for Unix/WSL. Native Windows installation uses [install.ps1](install.ps1) and the Setup documented in [installer/windows](installer/windows/README.md). Automatic application updates remain disabled until an explicit trusted CYBERVINCI feed is configured.
 
-### Contributing
+## Reliability controls
 
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
+```text
+CYBERVINCI_RELIABILITY_MODE=off|observe|enforce
+CYBERVINCI_MCP_MAX_TIMEOUT_MS=43200000
+CYBERVINCI_CANCEL_GRACE_MS=2000
+CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS=300000
+CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS=900000
+CYBERVINCI_TERMINAL_PERSIST_TIMEOUT_MS=1000
+CYBERVINCI_CLEANUP_TIMEOUT_MS=15000
+```
 
-### Building on OpenCode
+The default mode is `enforce`. Progress can renew an idle timeout, but it cannot renew the independent maximum deadline. Cancellation has a bounded grace period, and late tool results cannot overwrite an already settled terminal state.
 
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
+## Local configuration
 
----
+- Command: `cybervinci`
+- Project configuration: `cybervinci.json` or `cybervinci.jsonc`
+- Project directory: `.cybervinci/`
+- Global configuration directory: `~/.config/cybervinci/`
+- Environment prefix: `CYBERVINCI_`
+- Internal package scope: `@cybervinci-ai/*`
+- Desktop protocol: `cybervinci://`
 
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+The legacy `opencode://` protocol is accepted only as a migration alias. Service-facing provider IDs, API keys, OAuth identifiers, and `x-opencode-*` headers remain unchanged where OpenCode service compatibility requires them.
+
+## Development
+
+Useful focused commands from the repository root:
+
+```powershell
+bun turbo typecheck --force
+bun test packages/cybervinci/test/mcp/deadline.test.ts
+bun test --timeout 30000 --preload packages/cybervinci/test/preload.ts packages/cybervinci/test/session/processor-effect.test.ts --test-name-pattern "mark pending tools|keep the first|create one part|never-ending provider stream"
+bun test --timeout 30000 --preload packages/cybervinci/test/preload.ts packages/cybervinci/test/installation/installation.test.ts
+bun --cwd sdks/vscode run check-types
+```
+
+The full package test runner loads an OpenTUI preload that may keep Bun alive on some hosts. Use the explicit preload commands above for the focused regression gate, and report exactly which checks ran.
+
+## Documentation
+
+- [CYBERVINCI implementation and build notes](CYBERVINCI.md)
+- [Contribution guide](CONTRIBUTING.md)
+- [License](LICENSE)
+- [Upstream attribution and non-affiliation notice](NOTICE)
+
+Localized README files are temporary pointers until their translations are reviewed against this fork's current build and distribution status.
+
+## Upstream
+
+CYBERVINCI is derived from [OpenCode](https://github.com/anomalyco/opencode), specifically the upstream [`v1.17.18` release](https://github.com/anomalyco/opencode/releases/tag/v1.17.18). OpenCode is distributed under the MIT License. CYBERVINCI is not affiliated with, endorsed by, or maintained by the OpenCode project or anomalyco.

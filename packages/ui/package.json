@@ -1,13 +1,8 @@
 {
-  "name": "@opencode-ai/ui",
+  "name": "@cybervinci-ai/ui",
   "version": "1.17.18",
   "type": "module",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/anomalyco/opencode.git",
-    "directory": "packages/ui"
-  },
   "publishConfig": {
     "access": "public"
   },

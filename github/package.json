@@ -1,9 +1,12 @@
 {
-  "name": "github",
+  "name": "@cybervinci-ai/github-action",
   "module": "index.ts",
   "type": "module",
   "private": true,
   "license": "MIT",
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
   "devDependencies": {
     "@types/bun": "catalog:"
   },
@@ -15,6 +18,7 @@
     "@actions/github": "6.0.1",
     "@octokit/graphql": "9.0.1",
     "@octokit/rest": "catalog:",
-    "@opencode-ai/sdk": "workspace:*"
+    "@octokit/webhooks-types": "7.6.1",
+    "@cybervinci-ai/sdk": "workspace:*"
   }
 }

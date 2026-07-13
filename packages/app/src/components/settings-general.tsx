@@ -1,12 +1,12 @@
 import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
-import { Button } from "@opencode-ai/ui/button"
-import { Icon } from "@opencode-ai/ui/icon"
-import { Select } from "@opencode-ai/ui/select"
-import { Switch } from "@opencode-ai/ui/switch"
-import { TextField } from "@opencode-ai/ui/text-field"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { Button } from "@cybervinci-ai/ui/button"
+import { Icon } from "@cybervinci-ai/ui/icon"
+import { Select } from "@cybervinci-ai/ui/select"
+import { Switch } from "@cybervinci-ai/ui/switch"
+import { TextField } from "@cybervinci-ai/ui/text-field"
+import { Tooltip } from "@cybervinci-ai/ui/tooltip"
+import { useTheme, type ColorScheme } from "@cybervinci-ai/ui/theme/context"
+import { useDialog } from "@cybervinci-ai/ui/context/dialog"
 import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
@@ -28,7 +28,7 @@ import {
 } from "@/context/settings"
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
-import { Link } from "./link"
+
 import { SettingsList } from "./settings-list"
 
 let demoSoundState = {
@@ -449,12 +449,7 @@ export const SettingsGeneral: Component = () => {
 
         <SettingsRow
           title={language.t("settings.general.row.theme.title")}
-          description={
-            <>
-              {language.t("settings.general.row.theme.description")}{" "}
-              <Link href="https://opencode.ai/docs/themes/">{language.t("common.learnMore")}</Link>
-            </>
-          }
+          description={language.t("settings.general.row.theme.description")}
         >
           <Select
             data-action="settings-theme"

@@ -1,4 +1,4 @@
-import type { Session } from "@opencode-ai/sdk/v2/client"
+import type { Session } from "@cybervinci-ai/sdk/v2/client"
 import {
   type ComponentProps,
   createEffect,
@@ -17,23 +17,23 @@ import {
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createStore, produce } from "solid-js/store"
 import { useQuery } from "@tanstack/solid-query"
-import { Button } from "@opencode-ai/ui/button"
-import { Logo } from "@opencode-ai/ui/logo"
-import { Spinner } from "@opencode-ai/ui/spinner"
-import { ScrollView } from "@opencode-ai/ui/scroll-view"
-import { ProjectAvatar } from "@opencode-ai/ui/v2/project-avatar-v2"
-import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
-import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
-import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
+import { Button } from "@cybervinci-ai/ui/button"
+import { Logo } from "@cybervinci-ai/ui/logo"
+import { Spinner } from "@cybervinci-ai/ui/spinner"
+import { ScrollView } from "@cybervinci-ai/ui/scroll-view"
+import { ProjectAvatar } from "@cybervinci-ai/ui/v2/project-avatar-v2"
+import { ButtonV2 } from "@cybervinci-ai/ui/v2/button-v2"
+import { Icon as IconV2 } from "@cybervinci-ai/ui/v2/icon"
+import { IconButtonV2 } from "@cybervinci-ai/ui/v2/icon-button-v2"
+import { MenuV2 } from "@cybervinci-ai/ui/v2/menu-v2"
+import { TooltipV2 } from "@cybervinci-ai/ui/v2/tooltip-v2"
 import { getProjectAvatarVariant, useLayout, type HomeProjectSelection, type LocalProject } from "@/context/layout"
 import { useNavigate } from "@solidjs/router"
-import { base64Encode } from "@opencode-ai/core/util/encode"
-import { Icon } from "@opencode-ai/ui/icon"
+import { base64Encode } from "@cybervinci-ai/core/util/encode"
+import { Icon } from "@cybervinci-ai/ui/icon"
 import { usePlatform } from "@/context/platform"
 import { DateTime } from "luxon"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { useDialog } from "@cybervinci-ai/ui/context/dialog"
 import { useDirectoryPicker } from "@/components/directory-picker"
 import { useSettingsDialog } from "@/components/settings-dialog"
 import { DialogSelectServer, useServerManagementController } from "@/components/dialog-select-server"
@@ -58,13 +58,13 @@ import { sessionTitle } from "@/utils/session-title"
 import { pathKey } from "@/utils/path-key"
 import { useGlobal } from "@/context/global"
 import { useCommand } from "@/context/command"
-import { Binary } from "@opencode-ai/core/util/binary"
+import { Binary } from "@cybervinci-ai/core/util/binary"
 import { ServerRowMenu } from "@/components/server/server-row-menu"
 import { ServerHealthIndicator } from "@/components/server/server-row"
 import { type ServerHealth } from "@/utils/server-health"
 import { Persist, persisted } from "@/utils/persist"
-import { useMarked } from "@opencode-ai/ui/context/marked"
-import { preloadMarkdown } from "@opencode-ai/session-ui/markdown-cache"
+import { useMarked } from "@cybervinci-ai/ui/context/marked"
+import { preloadMarkdown } from "@cybervinci-ai/session-ui/markdown-cache"
 import { archiveHomeSession } from "./home-session-archive"
 import { shouldOpenSessionInBackground } from "./home-session-open"
 import { showToast } from "@/utils/toast"
@@ -257,7 +257,6 @@ type OpenSessionOptions = { background?: boolean }
 export function NewHome() {
   const sync = useServerSync()
   const layout = useLayout()
-  const platform = usePlatform()
   const pickDirectory = useDirectoryPicker()
   const dialog = useDialog()
   const navigate = useNavigate()
@@ -565,7 +564,7 @@ export function NewHome() {
           clearNotifications={clearNotifications}
           unseenCount={unseenCount}
           openSettings={openSettings}
-          openHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
+
           language={language}
         />
 
@@ -657,7 +656,7 @@ export function NewHome() {
         <HomeUtilityNav
           class="flex lg:hidden"
           openSettings={openSettings}
-          openHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
+
           language={language}
         />
       </div>
@@ -680,7 +679,7 @@ function HomeProjectColumn(props: {
   clearNotifications: (server: ServerConnection.Any, project: LocalProject) => void
   unseenCount: (server: ServerConnection.Any, project: LocalProject) => number
   openSettings: () => void
-  openHelp: () => void
+
   language: ReturnType<typeof useLanguage>
 }) {
   const global = useGlobal()
@@ -780,7 +779,7 @@ function HomeProjectColumn(props: {
       <HomeUtilityNav
         class="mb-8 mt-4 hidden shrink-0 lg:flex"
         openSettings={props.openSettings}
-        openHelp={props.openHelp}
+
         language={props.language}
       />
     </aside>
@@ -790,7 +789,7 @@ function HomeProjectColumn(props: {
 function HomeUtilityNav(props: {
   class?: string
   openSettings: () => void
-  openHelp: () => void
+
   language: ReturnType<typeof useLanguage>
 }) {
   return (
@@ -802,14 +801,6 @@ function HomeUtilityNav(props: {
       >
         <IconV2 name="settings-gear" size="small" />
         <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.settings")}</span>
-      </button>
-      <button
-        type="button"
-        class={`${HOME_PROJECT_NAV_ROW} text-v2-text-text-faint [&>[data-slot=icon-svg]]:text-v2-icon-icon-muted`}
-        onClick={props.openHelp}
-      >
-        <IconV2 name="help" size="small" />
-        <span class={HOME_PROJECT_NAV_LABEL}>{props.language.t("sidebar.help")}</span>
       </button>
     </div>
   )

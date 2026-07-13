@@ -1,5 +1,5 @@
-import { Location } from "@opencode-ai/schema/location"
-import { Reference } from "@opencode-ai/schema/reference"
+import { Location } from "@cybervinci-ai/schema/location"
+import { Reference } from "@cybervinci-ai/schema/reference"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { LocationQuery, locationQueryOpenApi } from "./location"

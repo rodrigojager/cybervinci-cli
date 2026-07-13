@@ -31,7 +31,7 @@ export default defineConfig({
     configSchema(),
     solidJs(),
     starlight({
-      title: "OpenCode",
+      title: "CYBERVINCI",
       defaultLocale: "root",
       locales: {
         root: {
@@ -155,13 +155,14 @@ export default defineConfig({
       ],
       lastUpdated: true,
       expressiveCode: { themes: ["github-light", "github-dark"] },
-      social: [
-        { icon: "github", label: "GitHub", href: config.github },
-        { icon: "discord", label: "Discord", href: config.discord },
-      ],
-      editLink: {
-        baseUrl: `${config.github}/edit/dev/packages/web/`,
-      },
+      social: [],
+      ...(config.github
+        ? {
+            editLink: {
+              baseUrl: `${config.github}/edit/dev/packages/web/`,
+            },
+          }
+        : {}),
       markdown: {
         headingLinks: false,
       },

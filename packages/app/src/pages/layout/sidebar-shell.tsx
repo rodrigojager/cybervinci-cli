@@ -8,8 +8,8 @@ import {
   type DragEvent,
 } from "@thisbeyond/solid-dnd"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
+import { IconButton } from "@cybervinci-ai/ui/icon-button"
+import { Tooltip, TooltipKeybind } from "@cybervinci-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
 
 export const SidebarContent = (props: {
@@ -28,8 +28,7 @@ export const SidebarContent = (props: {
   settingsLabel: Accessor<string>
   settingsKeybind: Accessor<string | undefined>
   onOpenSettings: () => void
-  helpLabel: Accessor<string>
-  onOpenHelp: () => void
+
   renderPanel: () => JSX.Element
 }): JSX.Element => {
   const expanded = createMemo(() => !!props.mobile || props.opened())
@@ -99,15 +98,7 @@ export const SidebarContent = (props: {
               aria-label={props.settingsLabel()}
             />
           </TooltipKeybind>
-          <Tooltip placement={placement()} value={props.helpLabel()}>
-            <IconButton
-              icon="help"
-              variant="ghost"
-              size="large"
-              onClick={props.onOpenHelp}
-              aria-label={props.helpLabel()}
-            />
-          </Tooltip>
+
         </div>
       </div>
 

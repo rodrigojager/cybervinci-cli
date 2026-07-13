@@ -1,11 +1,11 @@
 import { describe, expect } from "bun:test"
 import { Effect } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import { PluginV2 } from "@opencode-ai/core/plugin"
-import { PluginHost } from "@opencode-ai/core/plugin/host"
-import { ProviderPlugins } from "@opencode-ai/core/plugin/provider"
-import { NvidiaPlugin } from "@opencode-ai/core/plugin/provider/nvidia"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Catalog } from "@cybervinci-ai/core/catalog"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
+import { PluginHost } from "@cybervinci-ai/core/plugin/host"
+import { ProviderPlugins } from "@cybervinci-ai/core/plugin/provider"
+import { NvidiaPlugin } from "@cybervinci-ai/core/plugin/provider/nvidia"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "./fixture"
 
@@ -18,7 +18,7 @@ const addPlugin = Effect.fn(function* () {
 })
 
 describe("NvidiaPlugin", () => {
-  it.effect("is registered so legacy referer headers can be applied", () =>
+  it.effect("is registered so CYBERVINCI integration headers can be applied", () =>
     Effect.sync(() => expect(ProviderPlugins.map((item) => item.id)).toContain(PluginV2.ID.make("nvidia"))),
   )
 
@@ -39,9 +39,8 @@ describe("NvidiaPlugin", () => {
       yield* addPlugin()
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({
         Existing: "value",
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
-        "X-BILLING-INVOKE-ORIGIN": "OpenCode",
+        "X-Title": "cybervinci",
+        "X-BILLING-INVOKE-ORIGIN": "CYBERVINCI",
       })
       expect((yield* catalog.provider.get(ProviderV2.ID.openrouter))?.request.headers).toEqual({})
     }),
@@ -62,9 +61,8 @@ describe("NvidiaPlugin", () => {
       yield* addPlugin()
 
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
-        "X-BILLING-INVOKE-ORIGIN": "OpenCode",
+        "X-Title": "cybervinci",
+        "X-BILLING-INVOKE-ORIGIN": "CYBERVINCI",
       })
     }),
   )
@@ -88,8 +86,7 @@ describe("NvidiaPlugin", () => {
       yield* addPlugin()
 
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
+        "X-Title": "cybervinci",
         "X-BILLING-INVOKE-ORIGIN": "CustomOrigin",
       })
     }),

@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { define } from "../internal"
+import { define } from "@cybervinci-ai/plugin/v2/effect/plugin"
 import { ProviderV2 } from "../../provider"
 
 function resolveProject(options: Record<string, any>) {

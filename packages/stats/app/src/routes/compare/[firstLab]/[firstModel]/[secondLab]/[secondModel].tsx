@@ -1,7 +1,7 @@
 import "../../../../index.css"
 import { Link, Meta, Title } from "@solidjs/meta"
-import { getStatsModelComparisonData, type StatsModelComparisonEntry } from "@opencode-ai/stats-core/domain/home"
-import { runtime } from "@opencode-ai/stats-core/runtime"
+import { getStatsModelComparisonData, type StatsModelComparisonEntry } from "@cybervinci-ai/stats-core/domain/home"
+import { runtime } from "@cybervinci-ai/stats-core/runtime"
 import { createAsync, query, useParams } from "@solidjs/router"
 import { createMemo, createSignal, For, onMount, Show } from "solid-js"
 import { getRequestEvent } from "solid-js/web"
@@ -104,7 +104,7 @@ export default function ModelComparePair() {
   const title = createMemo(() => `${models()[0].name} vs ${models()[1].name} - Model Comparison`)
   const description = createMemo(
     () =>
-      `Compare ${models()[0].name} and ${models()[1].name} by usage, rank, context window, output limit, cache ratio, and cost across OpenCode data.`,
+      `Compare ${models()[0].name} and ${models()[1].name} by usage, rank, context window, output limit, cache ratio, and cost across CYBERVINCI data.`,
   )
   const canonicalPath = createMemo(
     () =>
@@ -163,7 +163,7 @@ export default function ModelComparePair() {
       <Meta name="description" content={description()} />
       <Link rel="canonical" href={canonicalUrl()} />
       <Meta property="og:type" content="website" />
-      <Meta property="og:site_name" content="OpenCode" />
+      <Meta property="og:site_name" content="CYBERVINCI" />
       <Meta property="og:title" content={title()} />
       <Meta property="og:description" content={description()} />
       <Meta property="og:url" content={canonicalUrl()} />
@@ -351,7 +351,7 @@ function buildComparisonRows(first: ComparisonModel, second: ComparisonModel): C
     ),
     comparisonRow(
       "Token Share",
-      "Share of recent OpenCode usage.",
+      "Share of recent CYBERVINCI usage.",
       { value: first.stats ? formatPercent(first.stats.tokenShare) : "No usage", score: first.stats?.tokenShare },
       { value: second.stats ? formatPercent(second.stats.tokenShare) : "No usage", score: second.stats?.tokenShare },
       "higher",

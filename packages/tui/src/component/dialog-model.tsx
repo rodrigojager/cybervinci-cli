@@ -1,6 +1,6 @@
 import { createMemo, createSignal } from "solid-js"
 import { useLocal } from "../context/local"
-import { map, pipe, flatMap, entries, filter, sortBy, take } from "remeda"
+import { map, pipe, flatMap, entries, filter, sortBy } from "remeda"
 import { DialogSelect } from "../ui/dialog-select"
 import { useDialog } from "../ui/dialog"
 import { createDialogProviderOptions, DialogProvider } from "./dialog-provider"
@@ -8,6 +8,14 @@ import { DialogVariant } from "./dialog-variant"
 import * as fuzzysort from "fuzzysort"
 import { useConnected } from "./use-connected"
 import { useSync } from "../context/sync"
+
+export function connectProviderOptions<T extends { value: string }>(options: T[], connectedProviderIDs: string[]) {
+  const connected = new Set(connectedProviderIDs)
+  return options
+    .filter((option) => !connected.has(option.value))
+    .slice(0, 6)
+    .map((option) => ({ ...option, category: "Connect providers" }))
+}
 
 export function DialogModel(props: { providerID?: string }) {
   const local = useLocal()
@@ -105,16 +113,9 @@ export function DialogModel(props: { providerID?: string }) {
       ),
     )
 
-    const popularProviders = !connected()
-      ? pipe(
-          providers(),
-          map((option) => ({
-            ...option,
-            category: "Popular providers",
-          })),
-          take(6),
-        )
-      : []
+    const availableProviders = props.providerID
+      ? []
+      : connectProviderOptions(providers(), sync.data.provider_next.connected)
 
     if (needle) {
       return [
@@ -122,11 +123,11 @@ export function DialogModel(props: { providerID?: string }) {
           fuzzysort.go(needle, providerOptions, { keys: ["title", "category"] }).map((x) => x.obj),
           false,
         ),
-        ...fuzzysort.go(needle, popularProviders, { keys: ["title"] }).map((x) => x.obj),
+        ...fuzzysort.go(needle, availableProviders, { keys: ["title", "description"] }).map((x) => x.obj),
       ]
     }
 
-    return [...favoriteOptions, ...recentOptions, ...providerOptions, ...popularProviders]
+    return [...favoriteOptions, ...recentOptions, ...providerOptions, ...availableProviders]
   })
 
   const provider = createMemo(() =>

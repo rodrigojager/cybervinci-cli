@@ -5,7 +5,7 @@ import { getStore } from "./store"
 import { FIRST_LAUNCH_ONBOARDING_COMPLETE_KEY } from "./store-keys"
 import { write as writeLog } from "./logging"
 
-const DEFAULT_PROJECT_DIR = "New OpenCode Project"
+const DEFAULT_PROJECT_DIR = "New CYBERVINCI Project"
 
 export function isFirstLaunchOnboardingPending() {
   const pending = getStore().get(FIRST_LAUNCH_ONBOARDING_COMPLETE_KEY) !== true

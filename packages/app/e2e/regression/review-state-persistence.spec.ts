@@ -1,9 +1,9 @@
-import { base64Encode } from "@opencode-ai/core/util/encode"
+import { base64Encode } from "@cybervinci-ai/core/util/encode"
 import { expect, test, type Page } from "@playwright/test"
-import { mockOpenCodeServer } from "../utils/mock-server"
+import { mockCYBERVINCIServer } from "../utils/mock-server"
 import { expectSessionTitle } from "../utils/waits"
 
-const directory = "C:/OpenCode/ReviewStatePersistence"
+const directory = "C:/CYBERVINCI/ReviewStatePersistence"
 const projectID = "proj_review_state_persistence"
 const sessionA = "ses_review_state_a"
 const sessionB = "ses_review_state_b"
@@ -64,7 +64,7 @@ async function switchSession(page: Page, title: string) {
 }
 
 async function setup(page: Page) {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     directory,
     project: {
       id: projectID,
@@ -78,7 +78,7 @@ async function setup(page: Page) {
       all: [
         {
           id: "opencode",
-          name: "OpenCode",
+          name: "CYBERVINCI",
           models: { test: { id: "test", name: "Test", limit: { context: 200_000 } } },
         },
       ],
@@ -110,14 +110,14 @@ async function setup(page: Page) {
     ({ directory, server, sessions }) => {
       localStorage.setItem("settings.v3", JSON.stringify({ general: { newLayoutDesigns: true } }))
       localStorage.setItem(
-        "opencode.global.dat:server",
+        "cybervinci.global.dat:server",
         JSON.stringify({
           projects: { local: [{ worktree: directory, expanded: true }] },
           lastProject: { local: directory },
         }),
       )
       localStorage.setItem(
-        "opencode.window.browser.dat:tabs",
+        "cybervinci.window.browser.dat:tabs",
         JSON.stringify(sessions.map((sessionId: string) => ({ type: "session", server, sessionId }))),
       )
     },

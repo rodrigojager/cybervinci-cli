@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@opencode-ai/sdk",
+  "name": "@cybervinci-ai/sdk",
   "version": "1.17.18",
   "type": "module",
   "license": "MIT",

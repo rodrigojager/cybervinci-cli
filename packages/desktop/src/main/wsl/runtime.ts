@@ -259,11 +259,19 @@ export async function installWslDistro(name: string, opts?: RunWslOptions) {
   )
 }
 
-export async function installWslOpencode(version: string, distro: string, opts?: RunWslOptions) {
+export async function installWslCyberVinci(version: string, distro: string, opts?: RunWslOptions) {
+  const installerURL = process.env.CYBERVINCI_INSTALL_SCRIPT_URL?.trim()
+  if (!installerURL) {
+    throw new Error("CYBERVINCI_INSTALL_SCRIPT_URL is required to install CYBERVINCI inside WSL")
+  }
   return runInteractiveCommand(
     resolveSystem32Command("wsl.exe"),
     wslArgs(
-      ["bash", "-lc", `curl -fsSL https://opencode.ai/install | bash -s -- --version ${shellEscape(version)}`],
+      [
+        "bash",
+        "-lc",
+        "curl -fsSL " + shellEscape(installerURL) + " | bash -s -- --version " + shellEscape(version),
+      ],
       distro,
     ),
     withTimeout(opts, DEFAULT_WSL_INSTALL_TIMEOUT_MS),
@@ -302,11 +310,11 @@ export async function probeWslDistro(name: string, opts?: RunWslOptions): Promis
   }
 }
 
-export async function resolveWslOpencode(distro: string, opts?: RunWslOptions) {
+export async function resolveWslCyberVinci(distro: string, opts?: RunWslOptions) {
   return firstLine(
     (
       await runWslSh(
-        'if [ -x "$HOME/.opencode/bin/opencode" ]; then printf "%s\\n" "$HOME/.opencode/bin/opencode"; fi',
+        'if [ -x "$HOME/.cybervinci/bin/cybervinci" ]; then printf "%s\\n" "$HOME/.cybervinci/bin/cybervinci"; fi',
         distro,
         opts,
       )

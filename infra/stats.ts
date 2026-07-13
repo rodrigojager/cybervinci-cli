@@ -104,9 +104,15 @@ export const inferenceEvent = new sst.Linkable("InferenceEvent", {
 // DATABASE
 ////////////////
 
+const statsDatabase = process.env.CYBERVINCI_STATS_DATABASE?.trim()
+const statsOrganization = process.env.CYBERVINCI_STATS_ORGANIZATION?.trim()
+if (!statsDatabase || !statsOrganization) {
+  throw new Error("CYBERVINCI_STATS_DATABASE and CYBERVINCI_STATS_ORGANIZATION are required for stats deployment.")
+}
+
 const cluster = planetscale.getDatabaseOutput({
-  name: "opencode-stats",
-  organization: "anomalyco",
+  name: statsDatabase,
+  organization: statsOrganization,
 })
 
 const branch =

@@ -1,166 +1,44 @@
 ---
-title: エンタープライズ
-description: 組織内で OpenCode を安全に使用します。
+title: Organization deployment
+description: Honest operator guidance for deploying CYBERVINCI in an organization.
 ---
 
-import config from "../../../../config.mjs"
-export const email = `mailto:${config.email}`
+CYBERVINCI does not offer a separate enterprise product, hosted control plane, sales channel, pricing plan, or managed SSO service. This page describes what an organization can do with the reviewed source and its own infrastructure.
 
-OpenCode Enterprise は、コードとデータがインフラストラクチャから決して流出しないようにしたい組織を対象としています。これは、SSO および内部 AI ゲートウェイと統合された一元化された設定を使用することで実現できます。
+## Deployment policy
 
-:::note
-OpenCode は、コードやコンテキストデータを一切保存しません。
-:::
-OpenCode Enterprise を始めるには:
+Organizations should treat CYBERVINCI as a self-managed compatibility fork:
 
-1. チーム内でトライアルを実施してください。
-2. 価格や実装オプションについては、**<a href={email}>お問い合わせ</a>**ください。
+1. Build from a pinned, reviewed commit.
+2. Distribute the resulting binary through an internal software channel.
+3. Configure only approved AI providers and MCP servers.
+4. Apply least-privilege tool permissions and network controls.
+5. Keep credentials in the organization's existing secret-management system.
+6. Validate updates in a staging environment before wider rollout.
 
----
+External updates are disabled by default in this fork. Any release feed or publishing target must be configured explicitly by the operator.
 
-## トライアル
+## Data handling
 
-OpenCode はオープンソースであり、コードやコンテキストデータは一切保存されないため、開発者は簡単に開始してトライアルを実行できます。
+CYBERVINCI keeps local configuration and session state on the machine where it runs. Model requests, tool calls, and enabled integrations can still transmit data to the providers or servers selected by the operator. Review each provider, MCP server, plugin, and command before enabling it.
 
----
+Official OpenCode-hosted services, including OpenCode Zen, OpenCode Go, OpenCode Console, and hosted share pages, are separate services operated by the OpenCode project. CYBERVINCI only preserves compatibility with them. Their terms, retention, pricing, and availability are not controlled by CYBERVINCI.
 
-### データの取り扱い
+For a local-only policy, disable hosted sharing:
 
-**OpenCode はコードやコンテキストデータを保存しません。** すべての処理はローカルで、または AI プロバイダーへの直接 API 呼び出しを通じて行われます。
-
-つまり、信頼できるプロバイダー、または内部 AI ゲートウェイを使用している限り、OpenCode を安全に利用できます。
-
-ここでの唯一の注意点は、オプションの `/share` 機能です。
-
----
-
-#### 会話を共有する
-
-ユーザーが `/share` 機能を有効にすると、会話とそれに関連付けられたデータが、opencode.ai でこれらの共有ページをホストするために使用されるサービスに送信されます。
-
-現在、データは CDN のエッジネットワークを通じて提供され、ユーザーの近くのエッジにキャッシュされます。
-
-試用版ではこれを無効にすることをお勧めします。
-
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "share": "disabled"
 }
 ```
 
-[sharing](/docs/share) について詳しくはこちらをご覧ください。
+See [sharing](/docs/share), [permissions](/docs/permissions), [providers](/docs/providers), and [configuration](/docs/config) before deployment.
 
----
+## Identity and gateways
 
-### コードの所有権
+CYBERVINCI can use provider credentials and endpoints supplied through its normal configuration. If an organization needs SSO, a private AI gateway, centralized policy enforcement, or audit retention, those capabilities must be supplied and operated by the organization or an explicitly selected vendor. This repository does not claim to provide them as a managed service.
 
-**OpenCode によって生成されたすべてのコードはお客様が所有します。** ライセンスの制限や所有権の主張はありません。
+## Support
 
----
-
-## 価格
-
-OpenCode Enterprise ではシートごとのモデルを使用します。独自の LLM ゲートウェイをお持ちの場合、使用されたトークンに対して料金はかかりません。価格と実装オプションの詳細については、**<a href={email}>お問い合わせください</a>**。
-
----
-
-## 導入
-
-トライアルが完了し、OpenCode を組織で使用する準備が整ったら、
-**<a href={email}>お問い合わせ</a>**して価格設定と実装オプションについてご相談ください。
-
----
-
-### 中央設定
-
-組織全体で単一の中央設定を使用するように OpenCode をセットアップできます。
-
-この一元化された設定は SSO プロバイダーと統合でき、すべてのユーザーが内部 AI ゲートウェイのみにアクセスできるようにします。
-
----
-
-### SSO統合
-
-中央の設定を通じて、OpenCode は認証のために組織の SSO プロバイダーと統合できます。
-
-これにより、OpenCode は既存の ID 管理システムを通じて内部 AI ゲートウェイの認証情報を取得できるようになります。
-
----
-
-### 内部AIゲートウェイ
-
-中央設定を使用すると、内部 AI ゲートウェイのみを使用するように OpenCode を構成することもできます。
-
-他のすべての AI プロバイダーを無効にして、すべてのリクエストが組織の承認されたインフラストラクチャを通過するようにすることもできます。
-
----
-
-### セルフホスティング
-
-データが流出しないように共有ページを無効にすることをお勧めします。
-貴社のインフラストラクチャ上でセルフホストすることもお手伝いします。
-
-これは現在ロードマップに載っています。ご興味がございましたら、**<a href={email}>お知らせください</a>**。
-
----
-
-## よくある質問
-
-<details>
-<summary>OpenCode Enterpriseとは何ですか？</summary>
-
-OpenCode Enterprise は、コードとデータがインフラストラクチャから決して流出しないようにしたい組織を対象としています。これは、SSO および内部 AI ゲートウェイと統合された一元化された設定を使用することで実現できます。
-
-</details>
-
-<details>
-<summary>OpenCode Enterpriseを始めるにはどうすればよいですか？</summary>
-
-まずはチームの内部トライアルから始めてください。 OpenCode はデフォルトでコードやコンテキストデータを保存しないため、簡単に開始できます。
-
-その後、**<a href={email}>お問い合わせ</a>**いただき、価格や実装オプションについてご相談ください。
-
-</details>
-
-<details>
-<summary>エンタープライズの価格設定はどのようになっていますか？</summary>
-
-エンタープライズ価格はシートごとに提供されます。独自の LLM ゲートウェイをお持ちの場合、使用されたトークンに対して料金はかかりません。詳細については、組織のニーズに基づいたカスタム見積もりをご希望の場合は、**<a href={email}>お問い合わせください</a>**。
-
-</details>
-
-<details>
-<summary>OpenCode Enterpriseでデータは安全ですか？</summary>
-
-はい。 OpenCode はコードやコンテキストデータを保存しません。すべての処理はローカルで、または AI プロバイダーへの直接 API 呼び出しを通じて行われます。一元的な設定と SSO の統合により、データは組織のインフラストラクチャ内で安全に保たれます。
-
-</details>
-
-<details>
-<summary>独自のプライベートnpmレジストリを使用できますか？</summary>
-
-OpenCode は、Bun のネイティブ `.npmrc` ファイルサポートを通じてプライベート npm レジストリをサポートします。組織が JFrog Artifactory、Nexus などのプライベートレジストリを使用している場合は、OpenCode を実行する前に開発者が認証されていることを確認してください。
-
-プライベートレジストリを使用して認証を設定するには、次の手順を実行します。
-
-```bash
-npm login --registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-```
-
-これにより、認証の詳細を含む `~/.npmrc` が作成されます。 OpenCode は自動的に
-これを拾ってください。
-
-:::caution
-OpenCode を実行する前に、プライベートレジストリにログインする必要があります。
-:::
-あるいは、.npmrc ファイルを手動で構成することもできます。
-
-```bash title="~/.npmrc"
-registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-//your-company.jfrog.io/api/npm/npm-virtual/:_authToken=${NPM_AUTH_TOKEN}
-```
-
-開発者は、エンタープライズレジストリからパッケージを確実にインストールできるように、OpenCode を実行する前にプライベートレジストリにログインする必要があります。
-
-</details>
+Use the local `README.md` and `CYBERVINCI.md` for build-specific guidance. Operational support belongs to the maintainer or team that supplied your source checkout or binary.

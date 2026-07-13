@@ -1,6 +1,6 @@
 import "../index.css"
 import { Meta, Title } from "@solidjs/meta"
-import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
+import { ProviderIcon } from "@cybervinci-ai/ui/provider-icon"
 import {
   getStatsLabData,
   getStatsHomeData,
@@ -9,7 +9,7 @@ import {
   type ModelUsagePoint,
   type StatsHomeData,
   type StatsLabData,
-} from "@opencode-ai/stats-core/domain/home"
+} from "@cybervinci-ai/stats-core/domain/home"
 import { createAsync, query, useParams } from "@solidjs/router"
 import { createMemo, createSignal, createUniqueId, For, onMount, Show, type JSX } from "solid-js"
 import { getRequestEvent } from "solid-js/web"
@@ -120,7 +120,7 @@ export default function StatsLab() {
       <Meta name="description" content={labDescription()} />
       <LocaleLinks path={labPath()} />
       <Meta property="og:type" content="website" />
-      <Meta property="og:site_name" content="OpenCode" />
+      <Meta property="og:site_name" content="CYBERVINCI" />
       <Meta property="og:title" content={labTitle()} />
       <Meta property="og:description" content={labDescription()} />
       <Meta property="og:url" content={labUrl()} />

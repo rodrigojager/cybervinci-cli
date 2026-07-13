@@ -6,6 +6,7 @@ on:
 
 jobs:
   triage:
+    if: false # Disabled until a trusted CYBERVINCI artifact is configured.
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -22,7 +23,7 @@ jobs:
           LOGIN="${{ github.event.issue.user.login }}"
           ASSOCIATION="${{ github.event.issue.author_association }}"
 
-          if [ "$LOGIN" = "opencode-agent[bot]" ] ||
+          if [ "$LOGIN" = "github-actions[bot]" ] ||
              [ "$ASSOCIATION" = "OWNER" ] ||
              [ "$ASSOCIATION" = "MEMBER" ] ||
              grep -qxiF "$LOGIN" .github/TEAM_MEMBERS; then
@@ -36,9 +37,9 @@ jobs:
         if: steps.author.outputs.skip != 'true'
         uses: ./.github/actions/setup-bun
 
-      - name: Install opencode
+      - name: Install cybervinci
         if: steps.author.outputs.skip != 'true'
-        run: curl -fsSL https://opencode.ai/install | bash
+        run: echo "CYBERVINCI automation is disabled pending a trusted fork artifact."
 
       - name: Triage issue
         if: steps.author.outputs.skip != 'true'
@@ -49,7 +50,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          opencode run --agent triage "The following issue was just opened, triage it:
+          cybervinci run --agent triage "The following issue was just opened, triage it:
 
           Title: $ISSUE_TITLE
 

@@ -1,6 +1,6 @@
 import "../index.css"
 import { Meta, Title } from "@solidjs/meta"
-import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
+import { ProviderIcon } from "@cybervinci-ai/ui/provider-icon"
 import { createAsync } from "@solidjs/router"
 import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
 import { getRequestEvent } from "solid-js/web"
@@ -112,7 +112,7 @@ export default function ModelCompareIndex() {
       <Meta name="description" content={compareDescription} />
       <LocaleLinks path={comparePath} />
       <Meta property="og:type" content="website" />
-      <Meta property="og:site_name" content="OpenCode" />
+      <Meta property="og:site_name" content="CYBERVINCI" />
       <Meta property="og:title" content={compareTitle} />
       <Meta property="og:description" content={compareDescription} />
       <Meta property="og:url" content={compareUrl()} />

@@ -10,10 +10,12 @@ env:
 
 jobs:
   update-docs:
-    if: github.repository == 'sst/opencode'
+    if: >-
+      vars.CYBERVINCI_AUTOMATION_REPOSITORY != '' &&
+      vars.CYBERVINCI_GITHUB_BINARY != '' &&
+      github.repository == vars.CYBERVINCI_AUTOMATION_REPOSITORY
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
-      id-token: write
       contents: write
       pull-requests: write
     steps:
@@ -41,14 +43,16 @@ jobs:
             } >> $GITHUB_OUTPUT
           fi
 
-      - name: Run opencode
+      - name: Run cybervinci
         if: steps.commits.outputs.has_commits == 'true'
-        uses: sst/opencode/github@2c14fc5586fe0b88e5c04732d2e846769cc35671 # latest
+        uses: ./github
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
+          binary: ${{ vars.CYBERVINCI_GITHUB_BINARY }}
           model: opencode/gpt-5.2
           agent: docs
+          use_github_token: true
           prompt: |
             Review the following commits from the last ${{ env.LOOKBACK_HOURS }} hours and identify any new features that may need documentation.
 

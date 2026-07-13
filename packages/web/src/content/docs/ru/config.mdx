@@ -1,21 +1,19 @@
 ---
 title: Конфигурация
-description: Использование конфигурации opencode JSON.
+description: Использование конфигурации cybervinci JSON.
 ---
 
-Вы можете настроить opencode, используя файл конфигурации JSON.
+Вы можете настроить cybervinci, используя файл конфигурации JSON.
 
 ---
 
 ## Формат
 
-opencode поддерживает форматы **JSON** и **JSONC** (JSON с комментариями).
+cybervinci поддерживает форматы **JSON** и **JSONC** (JSON с комментариями).
 
-```jsonc title="opencode.jsonc"
+```jsonc title="cybervinci.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
-  // Theme configuration
-  "theme": "opencode",
   "model": "anthropic/claude-sonnet-4-5",
   "autoupdate": true,
 }
@@ -34,7 +32,7 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 
 Файлы конфигурации объединяются, а не заменяются. Настройки из следующих мест конфигурации объединяются. Более поздние конфигурации переопределяют предыдущие только в случае конфликта ключей. Неконфликтные настройки из всех конфигов сохраняются.
 
-Например, если ваша глобальная конфигурация устанавливает `theme: "opencode"` и `autoupdate: true`, а конфигурация вашего проекта устанавливает `model: "anthropic/claude-sonnet-4-5"`, окончательная конфигурация будет включать все три параметра.
+For example, if your global configuration enables automatic updates and your project configuration selects a model, the merged configuration includes both settings. TUI-only options such as theme belong in tui.json.
 
 ---
 
@@ -42,30 +40,30 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 
 Источники конфигурации загружаются в следующем порядке (более поздние источники переопределяют более ранние):
 
-1. **Удаленная конфигурация** (от `.well-known/opencode`) – организационные настройки по умолчанию.
-2. **Глобальная конфигурация** (`~/.config/opencode/opencode.json`) — настройки пользователя.
-3. **Пользовательская конфигурация** (`OPENCODE_CONFIG` env var) – пользовательские переопределения
-4. **Конфигурация проекта** (`opencode.json` в проекте) — настройки, специфичные для проекта.
-5. **Каталоги `.opencode`** — агенты, команды, плагины
-6. **Встроенная конфигурация** (`OPENCODE_CONFIG_CONTENT` env var) – переопределяет время выполнения
+1. **Удаленная конфигурация** (от `.well-known/cybervinci`) – организационные настройки по умолчанию.
+2. **Глобальная конфигурация** (`~/.config/cybervinci/cybervinci.json`) — настройки пользователя.
+3. **Пользовательская конфигурация** (`CYBERVINCI_CONFIG` env var) – пользовательские переопределения
+4. **Конфигурация проекта** (`cybervinci.json` в проекте) — настройки, специфичные для проекта.
+5. **Каталоги `.cybervinci`** — агенты, команды, плагины
+6. **Встроенная конфигурация** (`CYBERVINCI_CONFIG_CONTENT` env var) – переопределяет время выполнения
 
 Это означает, что конфигурации проекта могут переопределять глобальные настройки по умолчанию, а глобальные конфигурации могут переопределять настройки по умолчанию для удаленной организации.
 
 :::note
-В каталогах `.opencode` и `~/.config/opencode` для подкаталогов используются **множественные имена**: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/` и `themes/`. Единственные имена (например, `agent/`) также поддерживаются для обратной совместимости.
+В каталогах `.cybervinci` и `~/.config/cybervinci` для подкаталогов используются **множественные имена**: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/` и `themes/`. Единственные имена (например, `agent/`) также поддерживаются для обратной совместимости.
 :::
 
 ---
 
 ### Удаленная
 
-Организации могут предоставить конфигурацию по умолчанию через конечную точку `.well-known/opencode`. Он извлекается автоматически при аутентификации у провайдера, который его поддерживает.
+Организации могут предоставить конфигурацию по умолчанию через конечную точку `.well-known/cybervinci`. Он извлекается автоматически при аутентификации у провайдера, который его поддерживает.
 
 Удаленная конфигурация загружается первой и служит базовым слоем. Все остальные источники конфигурации (глобальные, проектные) могут переопределить эти значения по умолчанию.
 
 Например, если ваша организация предоставляет серверы MCP, которые по умолчанию отключены:
 
-```json title="Remote config from .well-known/opencode"
+```json title="Remote config from .well-known/cybervinci"
 {
   "mcp": {
     "jira": {
@@ -79,7 +77,7 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 
 Вы можете включить определенные серверы в локальной конфигурации:
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "mcp": {
     "jira": {
@@ -95,9 +93,9 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 
 ### Глобальная
 
-Поместите глобальную конфигурацию opencode в `~/.config/opencode/opencode.json`. Используйте глобальную конфигурацию для общепользовательских настроек, таких как темы, поставщики или привязки клавиш.
+Поместите глобальную конфигурацию cybervinci в `~/.config/cybervinci/cybervinci.json`. Используйте глобальную конфигурацию для общепользовательских настроек, таких как темы, поставщики или привязки клавиш.
 
-Для настроек, специфичных для TUI, используйте `~/.config/opencode/tui.json`.
+Для настроек, специфичных для TUI, используйте `~/.config/cybervinci/tui.json`.
 
 Глобальная конфигурация переопределяет настройки по умолчанию для удаленной организации.
 
@@ -105,7 +103,7 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 
 ### Проектная
 
-Добавьте `opencode.json` в корень вашего проекта. Конфигурация проекта имеет наивысший приоритет среди стандартных файлов конфигурации — она переопределяет как глобальные, так и удаленные конфигурации.
+Добавьте `cybervinci.json` в корень вашего проекта. Конфигурация проекта имеет наивысший приоритет среди стандартных файлов конфигурации — она переопределяет как глобальные, так и удаленные конфигурации.
 
 Для настроек TUI, специфичных для проекта, добавьте `tui.json` рядом с ним.
 
@@ -113,7 +111,7 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 Поместите конфигурацию конкретного проекта в корень вашего проекта.
 :::
 
-Когда opencode запускается, он ищет файл конфигурации в текущем каталоге или переходит к ближайшему каталогу Git.
+Когда cybervinci запускается, он ищет файл конфигурации в текущем каталоге или переходит к ближайшему каталогу Git.
 
 Его также можно безопасно зарегистрировать в Git, и он использует ту же схему, что и глобальная.
 
@@ -121,11 +119,11 @@ opencode поддерживает форматы **JSON** и **JSONC** (JSON с 
 
 ### Пользовательский путь
 
-Укажите собственный путь к файлу конфигурации, используя переменную среды `OPENCODE_CONFIG`.
+Укажите собственный путь к файлу конфигурации, используя переменную среды `CYBERVINCI_CONFIG`.
 
 ```bash
-export OPENCODE_CONFIG=/path/to/my/custom-config.json
-opencode run "Hello world"
+export CYBERVINCI_CONFIG=/path/to/my/custom-config.json
+cybervinci run "Hello world"
 ```
 
 Пользовательская конфигурация загружается между глобальными и проектными конфигурациями в порядке приоритета.
@@ -134,14 +132,14 @@ opencode run "Hello world"
 
 ### Пользовательский каталог
 
-Укажите пользовательский каталог конфигурации, используя переменную среды `OPENCODE_CONFIG_DIR`. В этом каталоге будет выполняться поиск агентов, команд, режимов и плагинов (аналогично стандартному каталогу `.opencode`), и он должен иметь ту же структуру.
+Укажите пользовательский каталог конфигурации, используя переменную среды `CYBERVINCI_CONFIG_DIR`. В этом каталоге будет выполняться поиск агентов, команд, режимов и плагинов (аналогично стандартному каталогу `.cybervinci`), и он должен иметь ту же структуру.
 
 ```bash
-export OPENCODE_CONFIG_DIR=/path/to/my/config-directory
-opencode run "Hello world"
+export CYBERVINCI_CONFIG_DIR=/path/to/my/config-directory
+cybervinci run "Hello world"
 ```
 
-Пользовательский каталог загружается после каталогов global config и `.opencode`, поэтому он **может переопределить** их настройки.
+Пользовательский каталог загружается после каталогов global config и `.cybervinci`, поэтому он **может переопределить** их настройки.
 
 ---
 
@@ -170,9 +168,9 @@ opencode run "Hello world"
 }
 ```
 
-Используйте `OPENCODE_TUI_CONFIG`, чтобы указать на пользовательский файл конфигурации TUI.
+Используйте `CYBERVINCI_TUI_CONFIG`, чтобы указать на пользовательский файл конфигурации TUI.
 
-Устаревшие ключи `theme`, `keybinds` и `tui` в `opencode.json` устарели и автоматически переносятся, когда это возможно.
+Устаревшие ключи `theme`, `keybinds` и `tui` в `cybervinci.json` устарели и автоматически переносятся, когда это возможно.
 
 [Подробнее об использовании TUI можно узнать здесь](/docs/tui#configure).
 
@@ -180,9 +178,9 @@ opencode run "Hello world"
 
 ### Сервер
 
-Вы можете настроить параметры сервера для команд `opencode serve` и `opencode web` с помощью опции `server`.
+Вы можете настроить параметры сервера для команд `cybervinci serve` и `cybervinci web` с помощью опции `server`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "server": {
@@ -199,8 +197,8 @@ opencode run "Hello world"
 
 - `port` — порт для прослушивания.
 - `hostname` — имя хоста для прослушивания. Если `mdns` включен и имя хоста не задано, по умолчанию используется `0.0.0.0`.
-- `mdns` — включить обнаружение службы mDNS. Это позволит другим устройствам в сети обнаружить ваш сервер opencode.
-- `mdnsDomain` — собственное доменное имя для службы mDNS. По умолчанию `opencode.local`. Полезно для запуска нескольких экземпляров в одной сети.
+- `mdns` — включить обнаружение службы mDNS. Это позволит другим устройствам в сети обнаружить ваш сервер cybervinci.
+- `mdnsDomain` — собственное доменное имя для службы mDNS. По умолчанию `cybervinci.local`. Полезно для запуска нескольких экземпляров в одной сети.
 - `cors` — дополнительные источники, позволяющие использовать CORS при использовании HTTP-сервера из браузерного клиента. Значения должны быть полными источниками (схема + хост + дополнительный порт), например `https://app.example.com`.
 
 [Подробнее о сервере можно узнать здесь](/docs/server).
@@ -211,7 +209,7 @@ opencode run "Hello world"
 
 Вы можете управлять инструментами, которые LLM может использовать, с помощью опции `tools`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "tools": {
@@ -227,9 +225,9 @@ opencode run "Hello world"
 
 ### models
 
-Вы можете настроить поставщиков и модели, которые хотите использовать в своей конфигурации opencode, с помощью параметров `provider`, `model` и `small_model`.
+Вы можете настроить поставщиков и модели, которые хотите использовать в своей конфигурации cybervinci, с помощью параметров `provider`, `model` и `small_model`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {},
@@ -238,11 +236,11 @@ opencode run "Hello world"
 }
 ```
 
-Опция `small_model` настраивает отдельную модель для облегченных задач, таких как создание заголовков. По умолчанию opencode пытается использовать более дешевую модель, если она доступна у вашего провайдера, в противном случае он возвращается к вашей основной модели.
+Опция `small_model` настраивает отдельную модель для облегченных задач, таких как создание заголовков. По умолчанию cybervinci пытается использовать более дешевую модель, если она доступна у вашего провайдера, в противном случае он возвращается к вашей основной модели.
 
 Опции провайдера могут включать `timeout` и `setCacheKey`:
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -271,7 +269,7 @@ opencode run "Hello world"
 
 Amazon Bedrock поддерживает конфигурацию, специфичную для AWS:
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -300,7 +298,7 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 
 ### theme
 
-Установите тему пользовательского интерфейса в `tui.json`.
+Set the TUI theme in tui.json with the theme option.
 
 ```json title="tui.json"
 {
@@ -317,7 +315,7 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 
 Вы можете настроить специализированные агенты для конкретных задач с помощью опции `agent`.
 
-```jsonc title="opencode.jsonc"
+```jsonc title="cybervinci.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
@@ -335,7 +333,7 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 }
 ```
 
-Вы также можете определить агентов, используя файлы Markdown в `~/.config/opencode/agents/` или `.opencode/agents/`. [Подробнее здесь](/docs/agents).
+Вы также можете определить агентов, используя файлы Markdown в `~/.config/cybervinci/agents/` или `.cybervinci/agents/`. [Подробнее здесь](/docs/agents).
 
 ---
 
@@ -343,16 +341,16 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 
 Вы можете установить агента по умолчанию, используя опцию `default_agent`. Это определяет, какой агент используется, если ни один из них не указан явно.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "plan"
 }
 ```
 
-Агент по умолчанию должен быть основным агентом (а не субагентом). Это может быть встроенный агент, например `"build"` или `"plan"`, или [пользовательский агент](/docs/agents), который вы определили. Если указанный агент не существует или является субагентом, opencode вернется к `"build"` с предупреждением.
+Агент по умолчанию должен быть основным агентом (а не субагентом). Это может быть встроенный агент, например `"build"` или `"plan"`, или [пользовательский агент](/docs/agents), который вы определили. Если указанный агент не существует или является субагентом, cybervinci вернется к `"build"` с предупреждением.
 
-Этот параметр применяется ко всем интерфейсам: TUI, CLI (`opencode run`), настольному приложению и действию GitHub.
+Этот параметр применяется ко всем интерфейсам: TUI, CLI (`cybervinci run`), настольному приложению и действию GitHub.
 
 ---
 
@@ -360,7 +358,7 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 
 Функцию [share](/docs/share) можно настроить с помощью опции `share`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "share": "manual"
@@ -381,7 +379,7 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 
 Вы можете настроить собственные команды для повторяющихся задач с помощью опции `command`.
 
-```jsonc title="opencode.jsonc"
+```jsonc title="cybervinci.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "command": {
@@ -399,7 +397,7 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 }
 ```
 
-Вы также можете определять команды, используя файлы Markdown в `~/.config/opencode/commands/` или `.opencode/commands/`. [Подробнее здесь](/docs/commands).
+Вы также можете определять команды, используя файлы Markdown в `~/.config/cybervinci/commands/` или `.cybervinci/commands/`. [Подробнее здесь](/docs/commands).
 
 ---
 
@@ -420,9 +418,9 @@ Amazon Bedrock поддерживает конфигурацию, специфи
 
 ### Автообновление
 
-opencode автоматически загрузит все новые обновления при запуске. Вы можете отключить это с помощью опции `autoupdate`.
+cybervinci автоматически загрузит все новые обновления при запуске. Вы можете отключить это с помощью опции `autoupdate`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "autoupdate": false
@@ -438,7 +436,7 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете настроить форматировщики кода с помощью опции `formatter`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "formatter": {
@@ -462,11 +460,11 @@ opencode автоматически загрузит все новые обно�
 
 ### permission
 
-По умолчанию opencode **разрешает все операции**, не требуя явного разрешения. Вы можете изменить это, используя опцию `permission`.
+По умолчанию cybervinci **разрешает все операции**, не требуя явного разрешения. Вы можете изменить это, используя опцию `permission`.
 
 Например, чтобы гарантировать, что инструменты `edit` и `bash` требуют одобрения пользователя:
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "permission": {
@@ -484,7 +482,7 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете управлять поведением сжатия контекста с помощью опции `compaction`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "compaction": {
@@ -505,7 +503,7 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете настроить шаблоны игнорирования средства отслеживания файлов с помощью опции `watcher`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "watcher": {
@@ -522,7 +520,7 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете настроить серверы MCP, которые хотите использовать, с помощью опции `mcp`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {}
@@ -535,11 +533,11 @@ opencode автоматически загрузит все новые обно�
 
 ### Плагины
 
-[Плагины](/docs/plugins) расширяют opencode с помощью пользовательских инструментов, перехватчиков и интеграций.
+[Плагины](/docs/plugins) расширяют cybervinci с помощью пользовательских инструментов, перехватчиков и интеграций.
 
-Поместите файлы плагина в `.opencode/plugins/` или `~/.config/opencode/plugins/`. Вы также можете загружать плагины из npm с помощью опции `plugin`.
+Поместите файлы плагина в `.cybervinci/plugins/` или `~/.config/cybervinci/plugins/`. Вы также можете загружать плагины из npm с помощью опции `plugin`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-helicone-session", "@my-org/custom-plugin"]
@@ -554,7 +552,7 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете настроить инструкции для используемой вами модели с помощью опции `instructions`.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
@@ -569,7 +567,7 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете отключить поставщиков, которые загружаются автоматически, с помощью опции `disabled_providers`. Это полезно, если вы хотите запретить загрузку определенных поставщиков, даже если их учетные данные доступны.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "disabled_providers": ["openai", "gemini"]
@@ -592,14 +590,14 @@ opencode автоматически загрузит все новые обно�
 
 Вы можете указать белый список поставщиков с помощью опции `enabled_providers`. Если этот параметр установлен, будут включены только указанные поставщики, а все остальные будут игнорироваться.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "enabled_providers": ["anthropic", "openai"]
 }
 ```
 
-Это полезно, если вы хотите ограничить opencode использованием только определенных поставщиков, а не отключать их по одному.
+Это полезно, если вы хотите ограничить cybervinci использованием только определенных поставщиков, а не отключать их по одному.
 
 :::note
 `disabled_providers` имеет приоритет над `enabled_providers`.
@@ -613,7 +611,7 @@ opencode автоматически загрузит все новые обно�
 
 Ключ `experimental` содержит параметры, находящиеся в активной разработке.
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "experimental": {}
@@ -636,10 +634,10 @@ opencode автоматически загрузит все новые обно�
 
 Используйте `{env:VARIABLE_NAME}` для замены переменных среды:
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "{env:OPENCODE_MODEL}",
+  "model": "{env:CYBERVINCI_MODEL}",
   "provider": {
     "anthropic": {
       "models": {},
@@ -659,7 +657,7 @@ opencode автоматически загрузит все новые обно�
 
 Используйте `{file:path/to/file}` для замены содержимого файла:
 
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["./custom-instructions.md"],

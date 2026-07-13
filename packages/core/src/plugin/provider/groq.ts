@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { define } from "../internal"
+import { define } from "@cybervinci-ai/plugin/v2/effect/plugin"
 
 export const GroqPlugin = define({
   id: "groq",

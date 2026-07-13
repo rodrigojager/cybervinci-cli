@@ -1,6 +1,6 @@
-# OpenCode Desktop
+# CYBERVINCI Desktop
 
-The OpenCode Desktop app, built with Electron.
+The CYBERVINCI Desktop app, built with Electron.
 
 ## Development
 

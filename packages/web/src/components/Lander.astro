@@ -5,9 +5,6 @@ import config from "virtual:starlight/user-config";
 
 import CopyIcon from "../assets/lander/copy.svg";
 import CheckIcon from "../assets/lander/check.svg";
-import TuiScreenshot from "../assets/lander/screenshot-splash.png";
-import VscodeScreenshot from "../assets/lander/screenshot-vscode.png";
-import GithubScreenshot from "../assets/lander/screenshot-github.png";
 
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline, image, actions = [] } = data.hero || {};
@@ -24,14 +21,8 @@ const discord = (config.social || []).filter(s => s.icon === 'discord')[0];
 const locale = Astro.currentLocale || 'root';
 const t = Astro.locals.t as (key: string) => string;
 const docsHref = getRelativeLocaleUrl(locale, "")
-const docsCliHref = getRelativeLocaleUrl(locale, "cli")
-const docsIdeHref = getRelativeLocaleUrl(locale, "ide")
-const docsGithubHref = getRelativeLocaleUrl(locale, "github")
 
-const command = "curl -fsSL"
-const protocol = "https://"
-const url = "opencode.ai/install"
-const bash = "| bash"
+const installCommand = "./install --binary /path/to/cybervinci"
 
 let darkImage: ImageMetadata | undefined;
 let lightImage: ImageMetadata | undefined;
@@ -67,10 +58,8 @@ if (image) {
         <a href={docsHref}>{t('app.lander.cta.getStarted')}</a>
       </div>
       <div class="col2">
-      <button class="command" data-command={`${command} ${protocol}${url} ${bash}`}>
-          <code>
-            <span>{command}&nbsp;</span><span class="protocol">{protocol}</span><span class="highlight">{url}</span>&nbsp;{bash}
-          </code>
+      <button class="command" data-command={installCommand}>
+          <code><span class="highlight">{installCommand}</span></code>
           <span class="copy">
             <CopyIcon />
             <CheckIcon />
@@ -91,97 +80,7 @@ if (image) {
       </ul>
     </section>
 
-    <section class="alternatives">
-      <div class="col1">
-        <h3>npm</h3>
-        <button class="command" data-command="npm install -g opencode-ai">
-          <code>
-            <span>npm install -g</span> <span class="highlight">opencode-ai</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col2">
-        <h3>Bun</h3>
-        <button class="command" data-command="bun install -g opencode-ai">
-          <code>
-            <span>bun install -g</span> <span class="highlight">opencode-ai</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col3">
-        <h3>Homebrew</h3>
-        <button class="command" data-command="brew install opencode">
-          <code>
-            <span>brew install</span> <span class="highlight">opencode</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col4">
-        <h3>Paru</h3>
-        <button class="command" data-command="paru -S opencode-bin">
-          <code>
-            <span>paru -S</span> <span class="highlight">opencode-bin</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col4">
-        <h3>Mise</h3>
-        <button class="command" data-command="mise use -g github:anomalyco/opencode">
-          <code>
-            <span>mise use -g</span> <span class="highlight">github:anomalyco/opencode</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-    </section>
 
-    <section class="images">
-      <div class="left">
-        <figure>
-          <figcaption>{t('app.lander.images.tui.caption')}</figcaption>
-          <a href={docsCliHref}>
-            <Image src={TuiScreenshot} alt={t('app.lander.images.tui.alt')} />
-          </a>
-        </figure>
-      </div>
-      <div class="right">
-        <div class="row1">
-          <figure>
-            <figcaption>{t('app.lander.images.vscode.caption')}</figcaption>
-            <a href={docsIdeHref}>
-              <Image src={VscodeScreenshot} alt={t('app.lander.images.vscode.alt')} />
-            </a>
-          </figure>
-        </div>
-        <div class="row2">
-          <figure>
-            <figcaption>{t('app.lander.images.github.caption')}</figcaption>
-            <a href={docsGithubHref}>
-              <Image src={GithubScreenshot} alt={t('app.lander.images.github.alt')} />
-            </a>
-          </figure>
-        </div>
-      </div>
-    </section>
 
     <section class="footer">
       <div class="col1">

@@ -1,11 +1,11 @@
 import { Component, Show, createMemo, createResource, onMount } from "solid-js"
 import { createMediaQuery } from "@solid-primitives/media"
-import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { SelectV2 } from "@opencode-ai/ui/v2/select-v2"
-import { Switch } from "@opencode-ai/ui/v2/switch-v2"
-import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
-import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { ButtonV2 } from "@cybervinci-ai/ui/v2/button-v2"
+import { SelectV2 } from "@cybervinci-ai/ui/v2/select-v2"
+import { Switch } from "@cybervinci-ai/ui/v2/switch-v2"
+import { TextInputV2 } from "@cybervinci-ai/ui/v2/text-input-v2"
+import { useTheme, type ColorScheme } from "@cybervinci-ai/ui/theme/context"
+import { useDialog } from "@cybervinci-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
 import { usePlatform } from "@/context/platform"
@@ -25,7 +25,7 @@ import {
   useSettings,
 } from "@/context/settings"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
-import { Link } from "../link"
+
 import { SettingsListV2 } from "./parts/list"
 import { SettingsRowV2 } from "./parts/row"
 import "./settings-v2.css"
@@ -330,7 +330,7 @@ export const SettingsGeneralV2: Component<{
           </div>
         </SettingsRowV2>
 
-        <Show when={mobile() && import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"}>
+        <Show when={mobile() && import.meta.env.VITE_CYBERVINCI_CHANNEL !== "prod"}>
           <SettingsRowV2
             title={language.t("settings.general.row.mobileTitlebarBottom.title")}
             description={language.t("settings.general.row.mobileTitlebarBottom.description")}
@@ -427,14 +427,7 @@ export const SettingsGeneralV2: Component<{
 
         <SettingsRowV2
           title={language.t("settings.general.row.theme.title")}
-          description={
-            <>
-              {language.t("settings.general.row.theme.description")}{" "}
-              <Link class="settings-v2-link" href="https://opencode.ai/docs/themes/">
-                {language.t("common.learnMore")}
-              </Link>
-            </>
-          }
+          description={language.t("settings.general.row.theme.description")}
         >
           <SelectV2
             appearance="inline"

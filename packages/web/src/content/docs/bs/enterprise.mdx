@@ -1,165 +1,44 @@
 ---
-title: Za preduzeća
-description: Sigurno korištenje OpenCode u vašoj organizaciji.
+title: Organization deployment
+description: Honest operator guidance for deploying CYBERVINCI in an organization.
 ---
 
-import config from "../../../../config.mjs"
-export const email = `mailto:${config.email}`
+CYBERVINCI does not offer a separate enterprise product, hosted control plane, sales channel, pricing plan, or managed SSO service. This page describes what an organization can do with the reviewed source and its own infrastructure.
 
-OpenCode Enterprise je za organizacije koje žele osigurati da njihov kod i podaci nikada ne napuštaju njihovu infrastrukturu. To omogućava centralizovana konfiguracija koja se integriše s vašim SSO-om i internim AI gateway-om.
+## Deployment policy
 
-:::note
-OpenCode ne pohranjuje nijedan vaš kod ili kontekstualne podatke.
-:::
+Organizations should treat CYBERVINCI as a self-managed compatibility fork:
 
-Da započnete s OpenCode Enterprise:
+1. Build from a pinned, reviewed commit.
+2. Distribute the resulting binary through an internal software channel.
+3. Configure only approved AI providers and MCP servers.
+4. Apply least-privilege tool permissions and network controls.
+5. Keep credentials in the organization's existing secret-management system.
+6. Validate updates in a staging environment before wider rollout.
 
-1. Uradite interni probni period sa svojim timom.
-2. **<a href={email}>Kontaktirajte nas</a>** da razgovaramo o cijenama i opcijama implementacije.
+External updates are disabled by default in this fork. Any release feed or publishing target must be configured explicitly by the operator.
 
----
+## Data handling
 
-## Proba
+CYBERVINCI keeps local configuration and session state on the machine where it runs. Model requests, tool calls, and enabled integrations can still transmit data to the providers or servers selected by the operator. Review each provider, MCP server, plugin, and command before enabling it.
 
-OpenCode je otvorenog koda i ne pohranjuje vaš kod niti kontekstualne podatke, tako da vaši developeri mogu jednostavno [započeti](/docs/) i provesti probu.
+Official OpenCode-hosted services, including OpenCode Zen, OpenCode Go, OpenCode Console, and hosted share pages, are separate services operated by the OpenCode project. CYBERVINCI only preserves compatibility with them. Their terms, retention, pricing, and availability are not controlled by CYBERVINCI.
 
----
+For a local-only policy, disable hosted sharing:
 
-### Rukovanje podacima
-
-**OpenCode ne pohranjuje vaš kod ni kontekstualne podatke.** Sva obrada se odvija lokalno ili putem direktnih API poziva vašem AI provajderu.
-
-To znači da, sve dok koristite provajdera kojem vjerujete ili interni AI gateway, OpenCode možete koristiti sigurno.
-
-Jedina iznimka je opcionalna funkcija `/share`.
-
----
-
-#### Dijeljenje razgovora
-
-Ako korisnik uključi funkciju `/share`, razgovor i povezani podaci šalju se servisu koji koristimo za hosting ovih share stranica na opencode.ai.
-
-Podaci se trenutno serviraju kroz edge mrežu našeg CDN-a i keširaju se blizu korisnika.
-
-Preporučujemo da ovo onemogućite tokom probe.
-
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "share": "disabled"
 }
 ```
 
-[Saznajte više o dijeljenju](/docs/share).
+See [sharing](/docs/share), [permissions](/docs/permissions), [providers](/docs/providers), and [configuration](/docs/config) before deployment.
 
----
+## Identity and gateways
 
-### Vlasništvo koda
+CYBERVINCI can use provider credentials and endpoints supplied through its normal configuration. If an organization needs SSO, a private AI gateway, centralized policy enforcement, or audit retention, those capabilities must be supplied and operated by the organization or an explicitly selected vendor. This repository does not claim to provide them as a managed service.
 
-**Vi posjedujete sav kod koji OpenCode proizvede.** Nema ograničenja licenciranja niti zahtjeva za vlasništvo.
+## Support
 
----
-
-## Cijene
-
-Koristimo model naplate po sjedištu za OpenCode Enterprise. Ako imate vlastiti LLM gateway, ne naplaćujemo korištene tokene. Za više detalja o cijenama i opcijama implementacije, **<a href={email}>kontaktirajte nas</a>**.
-
----
-
-## Postavljanje
-
-Nakon što završite probni period i spremni ste koristiti OpenCode u svojoj organizaciji, možete **<a href={email}>kontaktirati nas</a>** da razgovaramo o cijenama i opcijama implementacije.
-
----
-
-### Centralna konfiguracija
-
-Možemo postaviti OpenCode da koristi jednu centralnu konfiguraciju za cijelu organizaciju.
-
-Ta centralizovana konfiguracija može se integrisati s vašim SSO provajderom i osigurava da svi korisnici pristupaju samo vašem internom AI gateway-u.
-
----
-
-### SSO integracija
-
-Kroz centralnu konfiguraciju, OpenCode se može integrisati sa SSO provajderom vaše organizacije za autentifikaciju.
-
-To omogućava OpenCode da dobije vjerodajnice za interni AI gateway kroz vaš postojeći sistem upravljanja identitetom.
-
----
-
-### Interni AI gateway
-
-Uz centralnu konfiguraciju, OpenCode se može podesiti da koristi samo vaš interni AI gateway.
-
-Također možete onemogućiti sve druge AI provajdere, čime osiguravate da svi zahtjevi prolaze kroz odobrenu infrastrukturu vaše organizacije.
-
----
-
-### Samostalno hostovanje
-
-Iako preporučujemo onemogućavanje share stranica kako biste osigurali da podaci nikada ne napuštaju vašu organizaciju, možemo vam pomoći i da ih samostalno hostujete na vlastitoj infrastrukturi.
-
-Ovo je trenutno na našoj mapi puta. Ako ste zainteresovani, **<a href={email}>javite nam</a>**.
-
----
-
-## Često postavljana pitanja
-
-<details>
-<summary>Šta je OpenCode Enterprise?</summary>
-
-OpenCode Enterprise je za organizacije koje žele osigurati da njihov kod i podaci nikada ne napuštaju njihovu infrastrukturu. To omogućava centralizovana konfiguracija koja se integriše s vašim SSO-om i internim AI gateway-om.
-
-</details>
-
-<details>
-<summary>Kako započeti s OpenCode Enterprise?</summary>
-
-Jednostavno započnite internu probu sa svojim timom. OpenCode po defaultu ne pohranjuje vaš kod ni kontekstualne podatke, što olakšava početak.
-
-Zatim **<a href={email}>kontaktirajte nas</a>** da razgovaramo o cijenama i opcijama implementacije.
-
-</details>
-
-<details>
-<summary>Kako funkcionišu enterprise cijene?</summary>
-
-Nudimo enterprise cijene po sjedištu. Ako imate vlastiti LLM gateway, ne naplaćujemo korištene tokene. Za više detalja, **<a href={email}>kontaktirajte nas</a>** za prilagođenu ponudu prema potrebama vaše organizacije.
-
-</details>
-
-<details>
-<summary>Jesu li moji podaci sigurni uz OpenCode Enterprise?</summary>
-
-Da. OpenCode ne pohranjuje vaš kod niti kontekstualne podatke. Sva obrada se odvija lokalno ili putem direktnih API poziva vašem AI provajderu. Uz centralnu konfiguraciju i SSO integraciju, vaši podaci ostaju sigurni unutar infrastrukture vaše organizacije.
-
-</details>
-
-<details>
-<summary>Možemo li koristiti vlastiti privatni NPM registar?</summary>
-
-OpenCode podržava privatne npm registre kroz Bunovu izvornu podršku za `.npmrc` datoteku. Ako vaša organizacija koristi privatni registar, kao što je JFrog Artifactory, Nexus ili slično, osigurajte da su developeri autentifikovani prije pokretanja OpenCode.
-
-Da postavite autentifikaciju s privatnim registrom:
-
-```bash
-npm login --registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-```
-
-Ovo kreira `~/.npmrc` s detaljima za autentifikaciju. OpenCode će to automatski prepoznati.
-
-:::caution
-Morate biti prijavljeni na privatni registar prije pokretanja OpenCode.
-:::
-
-Alternativno, možete ručno konfigurisati `.npmrc` datoteku:
-
-```bash title="~/.npmrc"
-registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-//your-company.jfrog.io/api/npm/npm-virtual/:_authToken=${NPM_AUTH_TOKEN}
-```
-
-Developeri moraju biti prijavljeni na privatni registar prije pokretanja OpenCode kako bi se paketi mogli instalirati iz vašeg enterprise registra.
-
-</details>
+Use the local `README.md` and `CYBERVINCI.md` for build-specific guidance. Operational support belongs to the maintainer or team that supplied your source checkout or binary.

@@ -3,10 +3,10 @@ import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
 import { Effect, Schema } from "effect"
-import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
-import { ProjectV2 } from "@opencode-ai/core/project"
-import { AbsolutePath } from "@opencode-ai/core/schema"
-import { Hash } from "@opencode-ai/core/util/hash"
+import { AppNodeBuilder } from "@cybervinci-ai/core/effect/app-node-builder"
+import { ProjectV2 } from "@cybervinci-ai/core/project"
+import { AbsolutePath } from "@cybervinci-ai/core/schema"
+import { Hash } from "@cybervinci-ai/core/util/hash"
 import { tmpdir } from "./fixture/tmpdir"
 import { testEffect } from "./lib/effect"
 
@@ -28,7 +28,7 @@ async function initRepo(dir: string, opts?: { commit?: boolean; remote?: string 
   await $`git init`.cwd(dir).quiet()
   await $`git config core.fsmonitor false`.cwd(dir).quiet()
   await $`git config commit.gpgsign false`.cwd(dir).quiet()
-  await $`git config user.email test@opencode.test`.cwd(dir).quiet()
+  await $`git config user.email test@cybervinci.test`.cwd(dir).quiet()
   await $`git config user.name Test`.cwd(dir).quiet()
   if (opts?.commit) await $`git commit --allow-empty -m root`.cwd(dir).quiet()
   if (opts?.remote) await $`git remote add origin ${opts.remote}`.cwd(dir).quiet()

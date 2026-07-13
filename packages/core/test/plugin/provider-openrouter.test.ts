@@ -1,13 +1,13 @@
-import { AISDK } from "@opencode-ai/core/aisdk"
+import { AISDK } from "@cybervinci-ai/core/aisdk"
 import { describe, expect } from "bun:test"
 import { Effect } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import { ModelV2 } from "@opencode-ai/core/model"
-import { PluginV2 } from "@opencode-ai/core/plugin"
-import { PluginHost } from "@opencode-ai/core/plugin/host"
-import { ProviderPlugins } from "@opencode-ai/core/plugin/provider"
-import { OpenRouterPlugin } from "@opencode-ai/core/plugin/provider/openrouter"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Catalog } from "@cybervinci-ai/core/catalog"
+import { ModelV2 } from "@cybervinci-ai/core/model"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
+import { PluginHost } from "@cybervinci-ai/core/plugin/host"
+import { ProviderPlugins } from "@cybervinci-ai/core/plugin/provider"
+import { OpenRouterPlugin } from "@cybervinci-ai/core/plugin/provider/openrouter"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "./fixture"
 
@@ -25,7 +25,7 @@ describe("OpenRouterPlugin", () => {
     Effect.sync(() => expect(ProviderPlugins.map((item) => item.id)).toContain(PluginV2.ID.make("openrouter"))),
   )
 
-  it.effect("applies legacy referer headers only to openrouter", () =>
+  it.effect("applies CYBERVINCI integration headers only to openrouter", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       yield* catalog.transform((catalog) => {
@@ -39,8 +39,7 @@ describe("OpenRouterPlugin", () => {
 
       expect((yield* catalog.provider.get(ProviderV2.ID.openrouter))?.request.headers).toEqual({
         Existing: "value",
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
+        "X-Title": "cybervinci",
       })
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({})
     }),

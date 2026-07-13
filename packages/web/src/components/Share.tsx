@@ -2,12 +2,12 @@ import { For, Show, onMount, Suspense, onCleanup, createMemo, createSignal, Susp
 import { DateTime } from "luxon"
 import { createStore, reconcile } from "solid-js/store"
 import { IconArrowDown } from "./icons"
-import { IconOpencode } from "./icons/custom"
+import { IconCyberVinci } from "./icons/custom"
 import { ShareI18nProvider, formatCurrency, formatNumber, normalizeLocale } from "./share/common"
 import styles from "./share.module.css"
-import type { MessageV2 } from "opencode/session/message-v2"
-import type { Message } from "opencode/session/message"
-import type { Session } from "opencode/session/index"
+import type { SessionV1 as MessageV2 } from "@cybervinci-ai/core/v1/session"
+import type { Message } from "cybervinci/session/message"
+import type { Session } from "cybervinci/session/session"
 import { Part, ProviderIcon } from "./share/part"
 
 type MessageWithParts = MessageV2.Info & { parts: MessageV2.Part[] }
@@ -62,7 +62,7 @@ export default function Share(props: {
     messages: Record<string, MessageWithParts>
   }>({
     info: {
-      id: props.id,
+      id: props.info.id,
       slug: props.info.slug,
       projectID: props.info.projectID,
       directory: props.info.directory,
@@ -135,7 +135,7 @@ export default function Share(props: {
           }
           if (type === "part") {
             setStore("messages", d.content.messageID, "parts", (arr) => {
-              const index = arr.findIndex((x) => x.id === d.content.id)
+              const index = arr.findIndex((x: MessageV2.Part) => x.id === d.content.id)
               if (index === -1) arr.push(d.content)
               if (index > -1) arr[index] = d.content
               return [...arr]
@@ -303,9 +303,9 @@ export default function Share(props: {
             <h1 data-component="header-title">{store.info?.title}</h1>
             <div data-component="header-details">
               <ul data-component="header-stats">
-                <li title={props.messages.opencode_version} data-slot="item">
-                  <div data-slot="icon" title={props.messages.opencode_name}>
-                    <IconOpencode width={16} height={16} />
+                <li title={props.messages.cybervinci_version} data-slot="item">
+                  <div data-slot="icon" title={props.messages.cybervinci_name}>
+                    <IconCyberVinci width={16} height={16} />
                   </div>
                   <Show when={store.info?.version} fallback="v0.0.1">
                     <span>v{store.info?.version}</span>
@@ -349,7 +349,7 @@ export default function Share(props: {
                   <For each={data().messages}>
                     {(msg, msgIndex) => {
                       const filteredParts = createMemo(() =>
-                        msg.parts.filter((x, index) => {
+                        msg.parts.filter((x: MessageV2.Part, index: number) => {
                           if (x.type === "step-start" && index > 0) return false
                           if (x.type === "snapshot") return false
                           if (x.type === "patch") return false
@@ -526,7 +526,7 @@ export function fromV1(v1: Message.Info): MessageWithParts {
       providerID: v1.metadata.assistant!.providerID,
       mode: "build",
       error: v1.metadata.error,
-      parts: v1.parts.flatMap((part, index): MessageV2.Part[] => {
+      parts: v1.parts.flatMap((part, index): any[] => {
         const base = {
           id: index.toString(),
           messageID: v1.id,
@@ -593,7 +593,7 @@ export function fromV1(v1: Message.Info): MessageWithParts {
         }
         return []
       }),
-    }
+    } as unknown as MessageWithParts
   }
 
   if (v1.role === "user") {
@@ -609,7 +609,7 @@ export function fromV1(v1: Message.Info): MessageWithParts {
       time: {
         created: v1.metadata.time.created,
       },
-      parts: v1.parts.flatMap((part, index): MessageV2.Part[] => {
+      parts: v1.parts.flatMap((part, index): any[] => {
         const base = {
           id: index.toString(),
           messageID: v1.id,
@@ -637,7 +637,7 @@ export function fromV1(v1: Message.Info): MessageWithParts {
         }
         return []
       }),
-    }
+    } as unknown as MessageWithParts
   }
 
   throw new Error("unknown message type")

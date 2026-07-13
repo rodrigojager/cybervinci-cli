@@ -1,4 +1,4 @@
-import opencodeWordmarkDark from "../asset/logo-ornate-dark.svg"
+import cybervinciWordmarkDark from "../asset/logo-ornate-dark.svg"
 import { query } from "@solidjs/router"
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { useI18n } from "../context/i18n"
@@ -7,13 +7,15 @@ import { route, type Locale } from "../lib/language"
 
 export type HeaderLink = { href: string; label: string }
 
+const statsRepository = import.meta.env.VITE_CYBERVINCI_STATS_REPOSITORY?.trim() ?? ""
+
 export const githubLink = {
-  href: "https://github.com/anomalyco/opencode",
-  apiHref: "https://api.github.com/repos/anomalyco/opencode",
-  fallbackStars: "150K",
+  href: statsRepository ? `https://github.com/${statsRepository}` : "#",
+  apiHref: statsRepository ? `https://api.github.com/repos/${statsRepository}` : "",
+  fallbackStars: "0",
 }
 export const themePreferences = ["dark", "light", "system"] as const
-export const themeStorageKey = "opencode:stats-theme"
+export const themeStorageKey = "cybervinci:stats-theme"
 export type ThemePreference = (typeof themePreferences)[number]
 
 const compactNumberFormatter = new Intl.NumberFormat("en", {
@@ -23,6 +25,7 @@ const compactNumberFormatter = new Intl.NumberFormat("en", {
 
 export const getGitHubStars = query(async () => {
   "use server"
+  if (!githubLink.apiHref) return githubLink.fallbackStars
   return fetch(githubLink.apiHref, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -132,8 +135,8 @@ export function Header(props: { githubStars: string; links?: readonly HeaderLink
             <strong>{i18n.t("header.github")}</strong>
             <span>[{props.githubStars}]</span>
           </a>
-          <a data-slot="header-button" data-variant="contrast" href="https://opencode.ai/">
-            <strong>{i18n.t("header.tryOpenCode")}</strong>
+          <a data-slot="header-button" data-variant="contrast" href="/">
+            <strong>{i18n.t("header.tryCYBERVINCI")}</strong>
           </a>
           <button
             data-slot="menu-button"
@@ -202,9 +205,9 @@ function DataWordmark() {
   )
 }
 
-function OpenCodeMark() {
+function CYBERVINCIMark() {
   return (
-    <svg data-slot="opencode-mark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+    <svg data-slot="cybervinci-mark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <path d="M40 40H0V0H40V40Z" fill="var(--stats-logo-bg)" />
       <path d="M26 29H14V17H26V29Z" fill="var(--stats-logo-fill)" />
       <path d="M26 11H14V29H26V11ZM32 35H8V5H32V35Z" fill="var(--stats-logo-stroke)" />
@@ -231,17 +234,8 @@ export function Footer(props: {
     { href: "#market-share", label: i18n.t("nav.marketShare") },
     { href: "#geo-breakdown", label: i18n.t("nav.geoBreakdown") },
   ]
-  const legal = [
-    { href: "https://opencode.ai/legal/terms-of-service", label: i18n.t("footer.terms") },
-    { href: "https://opencode.ai/legal/privacy-policy", label: i18n.t("footer.privacy") },
-  ]
-  const connect = [
-    { href: "mailto:hello@opencode.ai", label: i18n.t("footer.contact") },
-    { href: "https://opencode.ai/discord", label: i18n.t("footer.community") },
-    { href: "https://x.com/opencode", label: "X" },
-    { href: githubLink.href, label: i18n.t("header.github") },
-    { href: "https://www.youtube.com/@anomaly-co", label: i18n.t("footer.youtube") },
-  ]
+  const legal: HeaderLink[] = []
+  const connect = githubLink.href === "#" ? [] : [{ href: githubLink.href, label: i18n.t("header.github") }]
   const bridge = () =>
     props.bridge === undefined
       ? { href: "#geo-breakdown", label: i18n.t("nav.geoBreakdown").toUpperCase() }
@@ -251,8 +245,8 @@ export function Footer(props: {
     <footer data-component="footer">
       <Show when={bridge()}>{(link) => <SectionBridge label={link().label} href={link().href} />}</Show>
       <div data-slot="footer-grid">
-        <a data-slot="footer-mark" href="https://opencode.ai" aria-label={i18n.t("footer.homeAria")}>
-          <OpenCodeMark />
+        <a data-slot="footer-mark" href="/" aria-label={i18n.t("footer.homeAria")}>
+          <CYBERVINCIMark />
         </a>
         <FooterColumn title={i18n.t("footer.modelData")} links={modelStats} localHref={localHref} />
         <FooterColumn title={i18n.t("footer.legal")} links={legal} localHref={localHref} />
@@ -433,7 +427,7 @@ function SubscribeModal(props: { onClose: () => void }) {
       <div data-slot="modal-scrim" aria-hidden="true" onClick={props.onClose} />
       <div data-slot="modal-panel">
         <div data-slot="modal-brand">
-          <img data-slot="modal-logo" src={opencodeWordmarkDark} alt="OpenCode" />
+          <img data-slot="modal-logo" src={cybervinciWordmarkDark} alt="CYBERVINCI" />
           <button
             data-slot="modal-close"
             type="button"

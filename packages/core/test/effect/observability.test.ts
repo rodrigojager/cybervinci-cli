@@ -8,14 +8,14 @@ import { fileLogger } from "../../src/observability/logging"
 import { resource } from "../../src/observability/otlp"
 
 const otelResourceAttributes = process.env.OTEL_RESOURCE_ATTRIBUTES
-const opencodeClient = process.env.OPENCODE_CLIENT
+const cybervinciClient = process.env.CYBERVINCI_CLIENT
 
 afterEach(() => {
   if (otelResourceAttributes === undefined) delete process.env.OTEL_RESOURCE_ATTRIBUTES
   else process.env.OTEL_RESOURCE_ATTRIBUTES = otelResourceAttributes
 
-  if (opencodeClient === undefined) delete process.env.OPENCODE_CLIENT
-  else process.env.OPENCODE_CLIENT = opencodeClient
+  if (cybervinciClient === undefined) delete process.env.CYBERVINCI_CLIENT
+  else process.env.CYBERVINCI_CLIENT = cybervinciClient
 })
 
 describe("resource", () => {
@@ -35,31 +35,31 @@ describe("resource", () => {
     process.env.OTEL_RESOURCE_ATTRIBUTES = "service.namespace=anomalyco,broken"
 
     expect(resource().attributes["service.namespace"]).toBeUndefined()
-    expect(resource().attributes["opencode.client"]).toBeDefined()
+    expect(resource().attributes["cybervinci.client"]).toBeDefined()
   })
 
   test("keeps built-in attributes when env values conflict", () => {
-    process.env.OPENCODE_CLIENT = "cli"
+    process.env.CYBERVINCI_CLIENT = "cli"
     process.env.OTEL_RESOURCE_ATTRIBUTES =
-      "opencode.client=web,service.instance.id=override,service.namespace=anomalyco"
+      "cybervinci.client=web,service.instance.id=override,service.namespace=anomalyco"
 
     expect(resource().attributes).toMatchObject({
-      "opencode.client": "cli",
+      "cybervinci.client": "cli",
       "service.namespace": "anomalyco",
     })
     expect(resource().attributes["service.instance.id"]).not.toBe("override")
-    expect(resource().attributes["opencode.run"]).toMatch(/^[0-9a-f]{8}$/)
+    expect(resource().attributes["cybervinci.run"]).toMatch(/^[0-9a-f]{8}$/)
   })
 })
 
 test("file logger appends concurrent runs with a run on every line", async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-log-test-"))
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "cybervinci-log-test-"))
   await using _ = {
     async [Symbol.asyncDispose]() {
       await fs.rm(dir, { recursive: true, force: true })
     },
   }
-  const file = path.join(dir, "opencode.log")
+  const file = path.join(dir, "cybervinci.log")
   const write = (runID: string) =>
     Effect.forEach(
       Array.from({ length: 50 }, (_, index) => index),
@@ -81,13 +81,13 @@ test("file logger appends concurrent runs with a run on every line", async () =>
 })
 
 test("file logger flattens nested objects", async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-log-test-"))
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "cybervinci-log-test-"))
   await using _ = {
     async [Symbol.asyncDispose]() {
       await fs.rm(dir, { recursive: true, force: true })
     },
   }
-  const file = path.join(dir, "opencode.log")
+  const file = path.join(dir, "cybervinci.log")
 
   await Effect.logInfo("request complete", {
     request: { method: "GET", timing: { duration: 42 } },

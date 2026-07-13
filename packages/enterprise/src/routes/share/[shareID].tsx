@@ -1,31 +1,30 @@
-import { Message, Model, Part, Session, SessionStatus, SnapshotFileDiff, UserMessage } from "@opencode-ai/sdk/v2"
-import { SessionTurn } from "@opencode-ai/session-ui/session-turn"
-import { SessionReview } from "@opencode-ai/session-ui/session-review"
-import { DataProvider } from "@opencode-ai/session-ui/context"
-import { FileComponentProvider } from "@opencode-ai/ui/context/file"
-import { WorkerPoolProvider } from "@opencode-ai/ui/context/worker-pool"
+import { Message, Model, Part, Session, SessionStatus, SnapshotFileDiff, UserMessage } from "@cybervinci-ai/sdk/v2"
+import { SessionTurn } from "@cybervinci-ai/session-ui/session-turn"
+import { SessionReview } from "@cybervinci-ai/session-ui/session-review"
+import { DataProvider } from "@cybervinci-ai/session-ui/context"
+import { FileComponentProvider } from "@cybervinci-ai/ui/context/file"
+import { WorkerPoolProvider } from "@cybervinci-ai/ui/context/worker-pool"
 import { createAsync, query, useParams } from "@solidjs/router"
 import { createMemo, createSignal, ErrorBoundary, For, Match, Show, Switch } from "solid-js"
 import { Share } from "~/core/share"
-import { Logo, Mark } from "@opencode-ai/ui/logo"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
-import { iife } from "@opencode-ai/core/util/iife"
-import { Binary } from "@opencode-ai/core/util/binary"
-import { NamedError } from "@opencode-ai/core/util/error"
+import { Logo, Mark } from "@cybervinci-ai/ui/logo"
+import { ProviderIcon } from "@cybervinci-ai/ui/provider-icon"
+import { iife } from "@cybervinci-ai/core/util/iife"
+import { Binary } from "@cybervinci-ai/core/util/binary"
+import { NamedError } from "@cybervinci-ai/core/util/error"
 import { DateTime } from "luxon"
 import { createStore } from "solid-js/store"
 import NotFound from "../[...404]"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { MessageNav } from "@opencode-ai/session-ui/message-nav"
-import { FileSSR } from "@opencode-ai/session-ui/file-ssr"
+import { Tabs } from "@cybervinci-ai/ui/tabs"
+import { MessageNav } from "@cybervinci-ai/session-ui/message-nav"
+import { FileSSR } from "@cybervinci-ai/session-ui/file-ssr"
 import { clientOnly } from "@solidjs/start"
 import { Meta, Title } from "@solidjs/meta"
 import { Base64 } from "js-base64"
 import { getRequestEvent } from "solid-js/web"
 
 const ClientOnlyWorkerPoolProvider = clientOnly(() =>
-  import("@opencode-ai/session-ui/pierre/worker").then((m) => ({
+  import("@cybervinci-ai/session-ui/pierre/worker").then((m) => ({
     default: (props: { children: any }) => (
       <WorkerPoolProvider pools={m.getWorkerPools()}>{props.children}</WorkerPoolProvider>
     ),
@@ -185,9 +184,9 @@ export default function () {
           return (
             <>
               <Show when={info().title}>
-                <Title>{info().title} | OpenCode</Title>
+                <Title>{info().title} | CYBERVINCI</Title>
               </Show>
-              <Meta name="description" content="opencode - The AI coding agent built for the terminal." />
+              <Meta name="description" content="cybervinci - The AI coding agent built for the terminal." />
               <Meta property="og:image" content={ogImage()} />
               <Meta name="twitter:image" content={ogImage()} />
               <ClientOnlyWorkerPoolProvider>
@@ -277,22 +276,6 @@ export default function () {
                               <a href="https://opencode.ai">
                                 <Mark />
                               </a>
-                            </div>
-                            <div class="flex gap-3 items-center">
-                              <IconButton
-                                as={"a"}
-                                href="https://github.com/anomalyco/opencode"
-                                target="_blank"
-                                icon="github"
-                                variant="ghost"
-                              />
-                              <IconButton
-                                as={"a"}
-                                href="https://opencode.ai/discord"
-                                target="_blank"
-                                icon="discord"
-                                variant="ghost"
-                              />
                             </div>
                           </header>
                           <div class="select-text flex flex-col flex-1 min-h-0">

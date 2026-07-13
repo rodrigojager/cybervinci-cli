@@ -14,8 +14,8 @@ export default $config({
           profile: process.env.GITHUB_ACTIONS
             ? undefined
             : input.stage === "production"
-              ? "opencode-production"
-              : "opencode-dev",
+              ? "cybervinci-production"
+              : "cybervinci-dev",
         },
         stripe: {
           version: "0.0.28",

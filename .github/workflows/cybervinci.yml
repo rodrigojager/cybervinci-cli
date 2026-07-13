@@ -1,0 +1,11 @@
+name: CYBERVINCI automation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cybervinci:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Disabled until this fork has a trusted CYBERVINCI release artifact and app configuration."

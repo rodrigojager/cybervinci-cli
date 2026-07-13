@@ -1,7 +1,7 @@
 export * as ApplyPatchTool from "./apply-patch"
 
-import { ToolFailure } from "@opencode-ai/llm"
-import { FileDiff } from "@opencode-ai/schema/file-diff"
+import { ToolFailure } from "@cybervinci-ai/llm"
+import { FileDiff } from "@cybervinci-ai/schema/file-diff"
 import { createTwoFilesPatch, diffLines } from "diff"
 import { Effect, Layer, Schema } from "effect"
 import { makeLocationNode } from "../effect/app-node"

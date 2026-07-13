@@ -1,6 +1,6 @@
 import windowState from "electron-window-state"
-import { resolveThemeVariant } from "@opencode-ai/ui/theme/resolve"
-import type { DesktopTheme } from "@opencode-ai/ui/theme/types"
+import { resolveThemeVariant } from "@cybervinci-ai/ui/theme/resolve"
+import type { DesktopTheme } from "@cybervinci-ai/ui/theme/types"
 import oc2ThemeJson from "../../../ui/src/theme/themes/oc-2.json"
 import { randomUUID } from "node:crypto"
 import { rmSync } from "node:fs"
@@ -176,7 +176,7 @@ export function createMainWindow(id: string = randomUUID()) {
     height: state.height,
     show: false,
     autoHideMenuBar: true,
-    title: "OpenCode",
+    title: "CYBERVINCI",
     icon: iconPath(),
     backgroundColor: backgroundColor ?? defaultBackgroundColor(),
     ...(process.platform === "darwin"
@@ -245,7 +245,7 @@ function windowStateFile(id: string) {
 // Mirrors windowStorage() in packages/app/src/utils/persist.ts, which names
 // the per-window renderer store this window persists its tabs into.
 function windowDataFile(id: string) {
-  return `opencode.window.${id.replace(/[^a-zA-Z0-9._-]/g, "-")}.dat`
+  return `cybervinci.window.${id.replace(/[^a-zA-Z0-9._-]/g, "-")}.dat`
 }
 
 export function registerRendererProtocol() {
@@ -368,7 +368,7 @@ function wireWindowRecovery(win: BrowserWindow, name: string) {
 
     if (!isMainFrame || errorCode === -3) return
     void show(
-      "OpenCode failed to load",
+      "CYBERVINCI failed to load",
       [`Window: ${name}`, `URL: ${validatedURL}`, `Error: ${errorCode} ${errorDescription}`].join("\n"),
       false,
     )
@@ -389,7 +389,7 @@ function wireWindowRecovery(win: BrowserWindow, name: string) {
       "error",
     )
     void show(
-      "OpenCode window terminated unexpectedly",
+      "CYBERVINCI window terminated unexpectedly",
       [`Window: ${name}`, `Reason: ${details.reason}`, `Code: ${details.exitCode ?? "<unknown>"}`].join("\n"),
       false,
     )
@@ -397,7 +397,7 @@ function wireWindowRecovery(win: BrowserWindow, name: string) {
   win.on("unresponsive", () => {
     writeLog("window", "renderer unresponsive", { window: name, currentURL: win.webContents.getURL() }, "error")
     sampler.start()
-    void show("OpenCode is not responding", "You can relaunch the app, open the logs, or keep waiting.", true)
+    void show("CYBERVINCI is not responding", "You can relaunch the app, open the logs, or keep waiting.", true)
   })
   win.on("responsive", () => {
     writeLog("window", "renderer responsive", { window: name, currentURL: win.webContents.getURL() }, "error")

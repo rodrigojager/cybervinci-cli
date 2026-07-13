@@ -1,0 +1,623 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci acp --help 1`] = `
+"cybervinci acp
+
+start ACP (Agent Client Protocol) server
+
+Options:
+  -h, --help         show help                                                             [boolean]
+  -v, --version      show version number                                                   [boolean]
+      --print-logs   print logs to stderr                                                  [boolean]
+      --log-level    log level                  [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure         run without external plugins                                          [boolean]
+      --port         port to listen on                                         [number] [default: 0]
+      --hostname     hostname to listen on                           [string] [default: "127.0.0.1"]
+      --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)
+                                                                          [boolean] [default: false]
+      --mdns-domain  custom domain name for mDNS service (default: cybervinci.local)
+                                                                [string] [default: "cybervinci.local"]
+      --cors         additional domains to allow for CORS                      [array] [default: []]
+      --cwd          working directory [string] [default: "<HOME>"]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci mcp --help 1`] = `
+"cybervinci mcp
+
+manage MCP (Model Context Protocol) servers
+
+Commands:
+  cybervinci mcp add [name]     add an MCP server
+  cybervinci mcp list           list MCP servers and their status                        [aliases: ls]
+  cybervinci mcp auth [name]    authenticate with an OAuth-enabled MCP server
+  cybervinci mcp logout [name]  remove OAuth credentials for an MCP server
+  cybervinci mcp debug <name>   debug OAuth connection for an MCP server
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci attach --help 1`] = `
+"cybervinci attach <url>
+
+attach to a running cybervinci server
+
+Positionals:
+  url  http://localhost:4096                                                     [string] [required]
+
+Options:
+  -h, --help          show help                                                            [boolean]
+  -v, --version       show version number                                                  [boolean]
+      --print-logs    print logs to stderr                                                 [boolean]
+      --log-level     log level                 [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure          run without external plugins                                         [boolean]
+      --dir           directory to run in                                                   [string]
+  -c, --continue      continue the last session                                            [boolean]
+  -s, --session       session id to continue                                                [string]
+      --fork          fork the session when continuing (use with --continue or --session)  [boolean]
+  -p, --password      basic auth password (defaults to CYBERVINCI_SERVER_PASSWORD)            [string]
+  -u, --username      basic auth username (defaults to CYBERVINCI_SERVER_USERNAME or 'opencode')
+                                                                                            [string]
+      --mini          start the minimal interactive interface             [boolean] [default: false]
+      --no-replay     disable mini session history replay on resume and after resize       [boolean]
+      --replay-limit  cap visible mini replay to the newest N messages                      [number]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci run --help 1`] = `
+"cybervinci run [message..]
+
+run cybervinci with a message
+
+Positionals:
+  message  message to send                                                     [array] [default: []]
+
+Options:
+  -h, --help         show help                                                             [boolean]
+  -v, --version      show version number                                                   [boolean]
+      --print-logs   print logs to stderr                                                  [boolean]
+      --log-level    log level                  [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure         run without external plugins                                          [boolean]
+      --command      the command to run, use message for args                               [string]
+  -c, --continue     continue the last session                                             [boolean]
+  -s, --session      session id to continue                                                 [string]
+      --fork         fork the session before continuing (requires --continue or --session) [boolean]
+      --share        share the session                                                     [boolean]
+  -m, --model        model to use in the format of provider/model                           [string]
+      --agent        agent to use                                                           [string]
+      --format       format: default (formatted) or json (raw JSON events)
+                                          [string] [choices: "default", "json"] [default: "default"]
+  -f, --file         file(s) to attach to message                                            [array]
+      --title        title for the session (uses truncated prompt if no value provided)     [string]
+      --attach       attach to a running cybervinci server (e.g., http://localhost:4096)      [string]
+  -p, --password     basic auth password (defaults to CYBERVINCI_SERVER_PASSWORD)             [string]
+  -u, --username     basic auth username (defaults to CYBERVINCI_SERVER_USERNAME or 'opencode')
+                                                                                            [string]
+      --dir          directory to run in, path on remote server if attaching                [string]
+      --port         port for the local server (defaults to random port if no value provided)
+                                                                                            [number]
+      --variant      model variant (provider-specific reasoning effort, e.g., high, max, minimal)
+                                                                                            [string]
+      --thinking     show thinking blocks                                                  [boolean]
+  -i, --interactive  run in direct interactive split-footer mode          [boolean] [default: false]
+      --auto         auto-approve permissions that are not explicitly denied (dangerous!)
+                                                                          [boolean] [default: false]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci debug --help 1`] = `
+"cybervinci debug
+
+debugging and troubleshooting tools
+
+Commands:
+  cybervinci debug config        show resolved configuration
+  cybervinci debug lsp           LSP debugging utilities
+  cybervinci debug rg            ripgrep debugging utilities
+  cybervinci debug file          file system debugging utilities
+  cybervinci debug scrap         list all known projects
+  cybervinci debug skill         list all available skills
+  cybervinci debug snapshot      snapshot debugging utilities
+  cybervinci debug startup       print startup timing
+  cybervinci debug agent <name>  show agent configuration details
+  cybervinci debug v2            debug v2 catalog and built-in plugins
+  cybervinci debug info          show debug information
+  cybervinci debug paths         show global paths (data, config, cache, state)
+  cybervinci debug wait          wait indefinitely (for debugging)
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci providers --help 1`] = `
+"cybervinci providers
+
+manage AI providers and credentials
+
+Commands:
+  cybervinci providers list               list providers and credentials                 [aliases: ls]
+  cybervinci providers login [url]        log in to a provider
+  cybervinci providers logout [provider]  log out from a configured provider
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci agent --help 1`] = `
+"cybervinci agent
+
+manage agents
+
+Commands:
+  cybervinci agent create  create a new agent
+  cybervinci agent list    list all available agents
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci upgrade --help 1`] = `
+"cybervinci upgrade [target]
+
+upgrade cybervinci to the latest or a specific version
+
+Positionals:
+  target  version to upgrade to, for ex '0.1.48' or 'v0.1.48'                               [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+  -m, --method      installation method to use
+                          [string] [choices: "curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci uninstall --help 1`] = `
+"cybervinci uninstall
+
+uninstall cybervinci and remove all related files
+
+Options:
+  -h, --help         show help                                                             [boolean]
+  -v, --version      show version number                                                   [boolean]
+      --print-logs   print logs to stderr                                                  [boolean]
+      --log-level    log level                  [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure         run without external plugins                                          [boolean]
+  -c, --keep-config  keep configuration files                             [boolean] [default: false]
+  -d, --keep-data    keep session data and snapshots                      [boolean] [default: false]
+      --dry-run      show what would be removed without removing          [boolean] [default: false]
+  -f, --force        skip confirmation prompts                            [boolean] [default: false]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci serve --help 1`] = `
+"cybervinci serve
+
+starts a headless cybervinci server
+
+Options:
+  -h, --help         show help                                                             [boolean]
+  -v, --version      show version number                                                   [boolean]
+      --print-logs   print logs to stderr                                                  [boolean]
+      --log-level    log level                  [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure         run without external plugins                                          [boolean]
+      --port         port to listen on                                         [number] [default: 0]
+      --hostname     hostname to listen on                           [string] [default: "127.0.0.1"]
+      --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)
+                                                                          [boolean] [default: false]
+      --mdns-domain  custom domain name for mDNS service (default: cybervinci.local)
+                                                                [string] [default: "cybervinci.local"]
+      --cors         additional domains to allow for CORS                      [array] [default: []]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci web --help 1`] = `
+"cybervinci web
+
+start cybervinci server and open web interface
+
+Options:
+  -h, --help         show help                                                             [boolean]
+  -v, --version      show version number                                                   [boolean]
+      --print-logs   print logs to stderr                                                  [boolean]
+      --log-level    log level                  [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure         run without external plugins                                          [boolean]
+      --port         port to listen on                                         [number] [default: 0]
+      --hostname     hostname to listen on                           [string] [default: "127.0.0.1"]
+      --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)
+                                                                          [boolean] [default: false]
+      --mdns-domain  custom domain name for mDNS service (default: cybervinci.local)
+                                                                [string] [default: "cybervinci.local"]
+      --cors         additional domains to allow for CORS                      [array] [default: []]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci models --help 1`] = `
+"cybervinci models [provider]
+
+list all available models
+
+Positionals:
+  provider  provider ID to filter models by                                                 [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+      --verbose     use more verbose model output (includes metadata like costs)           [boolean]
+      --refresh     refresh the models cache from models.dev                               [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci stats --help 1`] = `
+"cybervinci stats
+
+show token usage and cost statistics
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+      --days        show stats for the last N days (default: all time)                      [number]
+      --tools       number of tools to show (default: all)                                  [number]
+      --models      show model statistics (default: hidden). Pass a number to show top N, otherwise
+                    shows all
+      --project     filter by project (default: all projects, empty string: current project)[string]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci export --help 1`] = `
+"cybervinci export [sessionID]
+
+export session data as JSON
+
+Positionals:
+  sessionID  session id to export                                                           [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+      --sanitize    redact sensitive transcript and file data                              [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci import --help 1`] = `
+"cybervinci import <file>
+
+import session data from JSON file or URL
+
+Positionals:
+  file  path to JSON file or share URL                                           [string] [required]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci github --help 1`] = `
+"cybervinci github
+
+manage GitHub agent
+
+Commands:
+  cybervinci github install  install the GitHub agent
+  cybervinci github run      run the GitHub agent
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci pr --help 1`] = `
+"cybervinci pr <number>
+
+fetch and checkout a GitHub PR branch, then run cybervinci
+
+Positionals:
+  number  PR number to checkout                                                  [number] [required]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci session --help 1`] = `
+"cybervinci session
+
+manage sessions
+
+Commands:
+  cybervinci session list                list sessions
+  cybervinci session delete <sessionID>  delete a session
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci plugin --help 1`] = `
+"cybervinci plugin <module>
+
+install plugin and update config
+
+Positionals:
+  module  npm module name                                                        [string] [required]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+  -g, --global      install in global config                              [boolean] [default: false]
+  -f, --force       replace existing plugin version                       [boolean] [default: false]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci db --help 1`] = `
+"cybervinci db
+
+database tools
+
+Commands:
+  cybervinci db [query]     open an interactive sqlite3 shell or run a query                 [default]
+  cybervinci db path        print the database path
+
+Positionals:
+  query  SQL query to execute                                                               [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+      --format      Output format                 [string] [choices: "json", "tsv"] [default: "tsv"]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci mcp list --help 1`] = `
+"cybervinci mcp list
+
+list MCP servers and their status
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci mcp add --help 1`] = `
+"cybervinci mcp add [name]
+
+add an MCP server
+
+Positionals:
+  name  name of the MCP server                                                              [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+      --url         URL for a remote MCP server                                             [string]
+      --env         environment variable for a local MCP server (KEY=VALUE)                  [array]
+      --header      HTTP header for a remote MCP server (KEY=VALUE)                          [array]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci mcp auth --help 1`] = `
+"cybervinci mcp auth [name]
+
+authenticate with an OAuth-enabled MCP server
+
+Commands:
+  cybervinci mcp auth list  list OAuth-capable MCP servers and their auth status         [aliases: ls]
+
+Positionals:
+  name  name of the MCP server                                                              [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci mcp logout --help 1`] = `
+"cybervinci mcp logout [name]
+
+remove OAuth credentials for an MCP server
+
+Positionals:
+  name  name of the MCP server                                                              [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci providers list --help 1`] = `
+"cybervinci providers list
+
+list providers and credentials
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci providers login --help 1`] = `
+"cybervinci providers login [url]
+
+log in to a provider
+
+Positionals:
+  url  cybervinci auth provider                                                               [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+  -p, --provider    provider id or name to log in to (skips provider selection)             [string]
+  -m, --method      login method label (skips method selection)                             [string]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci providers logout --help 1`] = `
+"cybervinci providers logout [provider]
+
+log out from a configured provider
+
+Positionals:
+  provider  provider id or name to log out from                                             [string]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci agent create --help 1`] = `
+"cybervinci agent create
+
+create a new agent
+
+Options:
+  -h, --help                  show help                                                    [boolean]
+  -v, --version               show version number                                          [boolean]
+      --print-logs            print logs to stderr                                         [boolean]
+      --log-level             log level         [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure                  run without external plugins                                 [boolean]
+      --path                  directory path to generate the agent file                     [string]
+      --description           what the agent should do                                      [string]
+      --mode                  agent mode            [string] [choices: "all", "primary", "subagent"]
+      --permissions, --tools  comma-separated list of permissions to allow (default: all).
+                              Available: "bash, read, edit, glob, grep, webfetch, task, todowrite,
+                              websearch, lsp, skill"                                        [string]
+  -m, --model                 model to use in the format of provider/model                  [string]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci agent list --help 1`] = `
+"cybervinci agent list
+
+list all available agents
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci session list --help 1`] = `
+"cybervinci session list
+
+list sessions
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+  -n, --max-count   limit to N most recent sessions                                         [number]
+      --format      output format             [string] [choices: "table", "json"] [default: "table"]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci session delete --help 1`] = `
+"cybervinci session delete <sessionID>
+
+delete a session
+
+Positionals:
+  sessionID  session ID to delete                                                [string] [required]
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci github install --help 1`] = `
+"cybervinci github install
+
+install the GitHub agent
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci github run --help 1`] = `
+"cybervinci github run
+
+run the GitHub agent
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]
+      --event       GitHub mock event to run the agent for                                  [string]
+      --token       GitHub personal access token (github_pat_********)                      [string]"
+`;
+
+exports[`cybervinci CLI help-text snapshots every documented command emits stable help text: cybervinci db path --help 1`] = `
+"cybervinci db path
+
+print the database path
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;

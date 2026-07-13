@@ -1,14 +1,14 @@
-import { Button } from "@opencode-ai/ui/button"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { Dialog } from "@opencode-ai/ui/dialog"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
+import { Button } from "@cybervinci-ai/ui/button"
+import { useDialog } from "@cybervinci-ai/ui/context/dialog"
+import { Dialog } from "@cybervinci-ai/ui/dialog"
+import { IconButton } from "@cybervinci-ai/ui/icon-button"
+import { ProviderIcon } from "@cybervinci-ai/ui/provider-icon"
 import { useMutation } from "@tanstack/solid-query"
-import { TextField } from "@opencode-ai/ui/text-field"
+import { TextField } from "@cybervinci-ai/ui/text-field"
 import { showToast } from "@/utils/toast"
 import { batch, For } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { Link } from "@/components/link"
+
 import { useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
@@ -184,9 +184,7 @@ export function CustomProviderForm() {
       <form onSubmit={save} class="px-2.5 pb-6 flex flex-col gap-6">
         <p class="text-14-regular text-text-base">
           {language.t("provider.custom.description.prefix")}
-          <Link href="https://opencode.ai/docs/providers/#custom-provider" tabIndex={-1}>
-            {language.t("provider.custom.description.link")}
-          </Link>
+          {language.t("provider.custom.description.link")}
           {language.t("provider.custom.description.suffix")}
         </p>
 

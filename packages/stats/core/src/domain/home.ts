@@ -973,7 +973,7 @@ function formatProvider(provider: string) {
     moonshot: "Moonshot",
     moonshotai: "Moonshot",
     nvidia: "NVIDIA",
-    opencode: "opencode",
+    cybervinci: "opencode",
     openai: "OpenAI",
     qwen: "Qwen",
     tencent: "Tencent",

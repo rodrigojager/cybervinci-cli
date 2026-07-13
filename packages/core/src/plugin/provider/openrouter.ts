@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { ModelV2 } from "../../model"
-import { define } from "../internal"
+import { define } from "@cybervinci-ai/plugin/v2/effect/plugin"
 
 export const OpenRouterPlugin = define({
   id: "openrouter",
@@ -11,8 +11,7 @@ export const OpenRouterPlugin = define({
           if (item.provider.api.type !== "aisdk") continue
           if (item.provider.api.package !== "@openrouter/ai-sdk-provider") continue
           evt.provider.update(item.provider.id, (provider) => {
-            provider.request.headers["HTTP-Referer"] = "https://opencode.ai/"
-            provider.request.headers["X-Title"] = "opencode"
+            provider.request.headers["X-Title"] = "cybervinci"
           })
           for (const modelID of [ModelV2.ID.make("gpt-5-chat-latest"), ModelV2.ID.make("openai/gpt-5-chat")]) {
             if (!item.models.has(modelID)) continue

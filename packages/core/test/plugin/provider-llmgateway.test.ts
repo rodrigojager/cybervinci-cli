@@ -1,12 +1,12 @@
 import { describe, expect } from "bun:test"
 import { Effect } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import { Integration } from "@opencode-ai/core/integration"
-import { PluginV2 } from "@opencode-ai/core/plugin"
-import { PluginHost } from "@opencode-ai/core/plugin/host"
-import { ProviderPlugins } from "@opencode-ai/core/plugin/provider"
-import { LLMGatewayPlugin } from "@opencode-ai/core/plugin/provider/llmgateway"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Catalog } from "@cybervinci-ai/core/catalog"
+import { Integration } from "@cybervinci-ai/core/integration"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
+import { PluginHost } from "@cybervinci-ai/core/plugin/host"
+import { ProviderPlugins } from "@cybervinci-ai/core/plugin/provider"
+import { LLMGatewayPlugin } from "@cybervinci-ai/core/plugin/provider/llmgateway"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "./fixture"
 
@@ -20,11 +20,11 @@ const addPlugin = Effect.fn(function* () {
 })
 
 describe("LLMGatewayPlugin", () => {
-  it.effect("is registered so legacy referer headers can be applied", () =>
+  it.effect("is registered so CYBERVINCI integration headers can be applied", () =>
     Effect.sync(() => expect(ProviderPlugins.map((item) => item.id)).toContain(PluginV2.ID.make("llmgateway"))),
   )
 
-  it.effect("applies legacy referer headers only to enabled llmgateway", () =>
+  it.effect("applies CYBERVINCI integration headers only to enabled llmgateway", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       const integrations = yield* Integration.Service
@@ -46,9 +46,8 @@ describe("LLMGatewayPlugin", () => {
       yield* addPlugin()
       expect((yield* catalog.provider.get(ProviderV2.ID.make("llmgateway")))?.request.headers).toEqual({
         Existing: "value",
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
-        "X-Source": "opencode",
+        "X-Title": "cybervinci",
+        "X-Source": "cybervinci",
       })
       expect((yield* catalog.provider.get(ProviderV2.ID.openrouter))?.request.headers).toEqual({})
     }),

@@ -1,13 +1,11 @@
 {
-  "name": "@opencode-ai/desktop",
+  "name": "@cybervinci-ai/desktop",
   "private": true,
   "version": "1.17.18",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "CYBERVINCI"
   },
   "scripts": {
     "typecheck": "tsgo -b",
@@ -36,8 +34,8 @@
   "devDependencies": {
     "@actions/artifact": "4.0.0",
     "@lydell/node-pty": "catalog:",
-    "@opencode-ai/app": "workspace:*",
-    "@opencode-ai/ui": "workspace:*",
+    "@cybervinci-ai/app": "workspace:*",
+    "@cybervinci-ai/ui": "workspace:*",
     "@sentry/solid": "catalog:",
     "@sentry/vite-plugin": "catalog:",
     "@solid-primitives/i18n": "2.2.1",

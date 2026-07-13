@@ -1,17 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.17.18",
-  "name": "@opencode-ai/http-recorder",
+  "name": "@cybervinci-ai/http-recorder",
   "description": "Record and replay Effect HTTP client traffic with deterministic cassettes",
   "type": "module",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/anomalyco/opencode.git",
-    "directory": "packages/http-recorder"
-  },
-  "homepage": "https://github.com/anomalyco/opencode/tree/dev/packages/http-recorder",
-  "bugs": "https://github.com/anomalyco/opencode/issues",
   "keywords": [
     "effect",
     "http",

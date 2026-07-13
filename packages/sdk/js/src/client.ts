@@ -2,9 +2,9 @@ export * from "./gen/types.gen.js"
 
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
-import { OpencodeClient } from "./gen/sdk.gen.js"
+import { CyberVinciClient } from "./gen/sdk.gen.js"
 import { wrapClientError } from "./error-interceptor.js"
-export { type Config as OpencodeClientConfig, OpencodeClient }
+export { type Config as CyberVinciClientConfig, CyberVinciClient }
 
 function pick(value: string | null, fallback?: string) {
   if (!value) return
@@ -25,12 +25,12 @@ function rewrite(request: Request, directory?: string) {
     url.searchParams.set("directory", value)
   }
 
-  const next = new Request(url, request)
+  const next = new Request(url.toString(), request)
   next.headers.delete("x-opencode-directory")
   return next
 }
 
-export function createOpencodeClient(config?: Config & { directory?: string }) {
+export function createCyberVinciClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {
     const customFetch: any = (req: any) => {
       // @ts-ignore
@@ -53,5 +53,5 @@ export function createOpencodeClient(config?: Config & { directory?: string }) {
   const client = createClient(config)
   client.interceptors.request.use((request) => rewrite(request, config?.directory))
   client.interceptors.error.use(wrapClientError)
-  return new OpencodeClient({ client })
+  return new CyberVinciClient({ client })
 }

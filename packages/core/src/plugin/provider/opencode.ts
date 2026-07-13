@@ -1,8 +1,8 @@
 import { Duration, Effect, Schema, Semaphore, Stream } from "effect"
 import type { Scope } from "effect"
-import type { IntegrationOAuthMethodRegistration } from "@opencode-ai/plugin/v2/effect/integration"
-import { define } from "@opencode-ai/plugin/v2/effect/plugin"
-import type { CredentialValue } from "@opencode-ai/sdk/v2/types"
+import type { IntegrationOAuthMethodRegistration } from "@cybervinci-ai/plugin/v2/effect/integration"
+import { define } from "@cybervinci-ai/plugin/v2/effect/plugin"
+import type { CredentialValue } from "@cybervinci-ai/sdk/v2/types"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { EventV2 } from "../../event"
 import { Credential } from "../../credential"
@@ -74,7 +74,7 @@ function oauth(http: HttpClient.HttpClient) {
   } satisfies IntegrationOAuthMethodRegistration
 }
 
-export const OpencodePlugin = define<HttpClient.HttpClient | EventV2.Service | Scope.Scope>({
+export const OpenCodePlugin = define<HttpClient.HttpClient | EventV2.Service | Scope.Scope>({
   id: "opencode",
   effect: Effect.fn(function* (ctx) {
     const events = yield* EventV2.Service
@@ -83,7 +83,7 @@ export const OpencodePlugin = define<HttpClient.HttpClient | EventV2.Service | S
     let connected = false
     let providers: typeof ConfigV1.Info.Type.provider | undefined
 
-    const load = Effect.fn("OpencodePlugin.load")(function* () {
+    const load = Effect.fn("OpenCodePlugin.load")(function* () {
       const connection = yield* ctx.integration.connection.active("opencode")
       const credential = connection
         ? yield* ctx.integration.connection.resolve(connection).pipe(Effect.catch(() => Effect.succeed(undefined)))

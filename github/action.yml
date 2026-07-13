@@ -1,79 +1,68 @@
-name: "opencode GitHub Action"
-description: "Run opencode in GitHub Actions workflows"
+name: "CYBERVINCI GitHub Action"
+description: "Run a caller-supplied CYBERVINCI binary in GitHub Actions workflows"
 branding:
   icon: "code"
   color: "orange"
 
 inputs:
+  binary:
+    description: "Path to a trusted CYBERVINCI binary built or downloaded by the caller"
+    required: true
   model:
     description: "Model to use"
     required: true
-
   agent:
-    description: "Agent to use. Must be a primary agent. Falls back to default_agent from config or 'build' if not found."
+    description: "Primary agent to use"
     required: false
-
   share:
-    description: "Share the opencode session (defaults to true for public repos)"
+    description: "Share the CYBERVINCI session"
     required: false
-
   prompt:
-    description: "Custom prompt to override the default prompt"
+    description: "Custom prompt"
     required: false
-
   use_github_token:
-    description: "Use GITHUB_TOKEN directly instead of OpenCode App token exchange. When true, skips OIDC and uses the GITHUB_TOKEN env var."
+    description: "Use GITHUB_TOKEN directly instead of an app token exchange"
     required: false
-    default: "false"
-
+    default: "true"
   mentions:
-    description: "Comma-separated list of trigger phrases (case-insensitive). Defaults to '/opencode,/oc'"
+    description: "Comma-separated trigger phrases"
     required: false
-
   variant:
-    description: "Model variant for provider-specific reasoning effort (e.g., high, max, minimal)"
+    description: "Provider-specific model variant"
     required: false
-
   oidc_base_url:
-    description: "Base URL for OIDC token exchange API. Only required when running a custom GitHub App install. Defaults to https://api.opencode.ai"
+    description: "Explicit OIDC token exchange base URL for a separately configured GitHub App"
     required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Get opencode version
-      id: version
+    - name: Stage trusted CYBERVINCI binary
       shell: bash
+      env:
+        CYBERVINCI_ACTION_BINARY: ${{ inputs.binary }}
       run: |
-        VERSION=$(curl -sf https://api.github.com/repos/anomalyco/opencode/releases/latest | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
-        echo "version=${VERSION:-latest}" >> $GITHUB_OUTPUT
+        set -euo pipefail
+        test -f "$CYBERVINCI_ACTION_BINARY"
+        mkdir -p "$HOME/.cybervinci/bin"
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          cp "$CYBERVINCI_ACTION_BINARY" "$HOME/.cybervinci/bin/cybervinci.exe"
+        else
+          cp "$CYBERVINCI_ACTION_BINARY" "$HOME/.cybervinci/bin/cybervinci"
+          chmod +x "$HOME/.cybervinci/bin/cybervinci"
+        fi
+        echo "$HOME/.cybervinci/bin" >> "$GITHUB_PATH"
 
-    - name: Cache opencode
-      id: cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.opencode/bin
-        key: opencode-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}
-
-    - name: Install opencode
-      if: steps.cache.outputs.cache-hit != 'true'
+    - name: Run CYBERVINCI
       shell: bash
-      run: curl -fsSL https://opencode.ai/install | bash
-
-    - name: Add opencode to PATH
-      shell: bash
-      run: echo "$HOME/.opencode/bin" >> $GITHUB_PATH
-
-    - name: Run opencode
-      shell: bash
-      id: run_opencode
-      run: opencode github run
+      run: cybervinci github run
       env:
         MODEL: ${{ inputs.model }}
         AGENT: ${{ inputs.agent }}
         SHARE: ${{ inputs.share }}
         PROMPT: ${{ inputs.prompt }}
         USE_GITHUB_TOKEN: ${{ inputs.use_github_token }}
+        GITHUB_TOKEN: ${{ github.token }}
         MENTIONS: ${{ inputs.mentions }}
         VARIANT: ${{ inputs.variant }}
         OIDC_BASE_URL: ${{ inputs.oidc_base_url }}

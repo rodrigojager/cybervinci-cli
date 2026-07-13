@@ -1,165 +1,44 @@
 ---
-title: المؤسسات
-description: استخدام OpenCode بأمان داخل مؤسستك.
+title: Organization deployment
+description: Honest operator guidance for deploying CYBERVINCI in an organization.
 ---
 
-import config from "../../../../config.mjs"
-export const email = `mailto:${config.email}`
+CYBERVINCI does not offer a separate enterprise product, hosted control plane, sales channel, pricing plan, or managed SSO service. This page describes what an organization can do with the reviewed source and its own infrastructure.
 
-OpenCode Enterprise مخصص للمؤسسات التي تريد التأكد من أن الشيفرة والبيانات لا تغادر بنيتها التحتية مطلقا. ويمكن تحقيق ذلك عبر استخدام إعدادات مركزية تتكامل مع SSO وبوابة AI الداخلية لديك.
+## Deployment policy
 
-:::note
-لا يقوم OpenCode بتخزين أي من شيفرتك أو بيانات السياق.
-:::
+Organizations should treat CYBERVINCI as a self-managed compatibility fork:
 
-لبدء استخدام OpenCode Enterprise:
+1. Build from a pinned, reviewed commit.
+2. Distribute the resulting binary through an internal software channel.
+3. Configure only approved AI providers and MCP servers.
+4. Apply least-privilege tool permissions and network controls.
+5. Keep credentials in the organization's existing secret-management system.
+6. Validate updates in a staging environment before wider rollout.
 
-1. أجرِ تجربة داخلية مع فريقك.
-2. **<a href={email}>اتصل بنا</a>** لمناقشة التسعير وخيارات التنفيذ.
+External updates are disabled by default in this fork. Any release feed or publishing target must be configured explicitly by the operator.
 
----
+## Data handling
 
-## تجربة
+CYBERVINCI keeps local configuration and session state on the machine where it runs. Model requests, tool calls, and enabled integrations can still transmit data to the providers or servers selected by the operator. Review each provider, MCP server, plugin, and command before enabling it.
 
-OpenCode مفتوح المصدر ولا يخزن أي من شيفرتك أو بيانات السياق، لذا يمكن للمطورين لديك ببساطة [البدء](/docs/) وإجراء تجربة.
+Official OpenCode-hosted services, including OpenCode Zen, OpenCode Go, OpenCode Console, and hosted share pages, are separate services operated by the OpenCode project. CYBERVINCI only preserves compatibility with them. Their terms, retention, pricing, and availability are not controlled by CYBERVINCI.
 
----
+For a local-only policy, disable hosted sharing:
 
-### التعامل مع البيانات
-
-**لا يقوم OpenCode بتخزين شيفرتك أو بيانات السياق.** تتم جميع المعالجة محليا أو عبر استدعاءات API مباشرة إلى مزود AI لديك.
-
-وهذا يعني أنه طالما أنك تستخدم مزودا تثق به، أو بوابة AI داخلية، يمكنك استخدام OpenCode بأمان.
-
-الاستثناء الوحيد هنا هو ميزة `/share` الاختيارية.
-
----
-
-#### مشاركة المحادثات
-
-إذا فعّل المستخدم ميزة `/share`، فسيتم إرسال المحادثة والبيانات المرتبطة بها إلى الخدمة التي نستخدمها لاستضافة صفحات المشاركة هذه على opencode.ai.
-
-يتم تقديم البيانات حاليا عبر شبكة الحافة الخاصة بـ CDN لدينا، وتُخزّن مؤقتا على الحافة بالقرب من مستخدميك.
-
-نوصي بتعطيل ذلك أثناء التجربة.
-
-```json title="opencode.json"
+```json title="cybervinci.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "share": "disabled"
 }
 ```
 
-[تعرّف على المزيد حول المشاركة](/docs/share).
+See [sharing](/docs/share), [permissions](/docs/permissions), [providers](/docs/providers), and [configuration](/docs/config) before deployment.
 
----
+## Identity and gateways
 
-### ملكية الشيفرة
+CYBERVINCI can use provider credentials and endpoints supplied through its normal configuration. If an organization needs SSO, a private AI gateway, centralized policy enforcement, or audit retention, those capabilities must be supplied and operated by the organization or an explicitly selected vendor. This repository does not claim to provide them as a managed service.
 
-**أنت تملك كل الشيفرة التي ينتجها OpenCode.** لا توجد قيود ترخيص أو مطالبات بالملكية.
+## Support
 
----
-
-## التسعير
-
-نستخدم نموذج تسعير لكل مقعد في OpenCode Enterprise. إذا كانت لديك بوابة LLM خاصة بك، فلن نفرض رسوما على الرموز (tokens) المستخدمة. لمزيد من التفاصيل حول التسعير وخيارات التنفيذ، **<a href={email}>اتصل بنا</a>**.
-
----
-
-## النشر
-
-بعد إكمال التجربة وعندما تكون جاهزا لاستخدام OpenCode داخل مؤسستك، يمكنك **<a href={email}>الاتصال بنا</a>** لمناقشة التسعير وخيارات التنفيذ.
-
----
-
-### الإعدادات المركزية
-
-يمكننا إعداد OpenCode لاستخدام إعدادات مركزية واحدة لكامل مؤسستك.
-
-يمكن لهذه الإعدادات المركزية أن تتكامل مع مزود SSO لديك، وتضمن أن جميع المستخدمين يصلون فقط إلى بوابة AI الداخلية لديك.
-
----
-
-### تكامل SSO
-
-عبر الإعدادات المركزية، يمكن لـ OpenCode التكامل مع مزود SSO في مؤسستك لأغراض المصادقة.
-
-يتيح ذلك لـ OpenCode الحصول على بيانات الاعتماد لبوابة AI الداخلية لديك عبر نظام إدارة الهوية الحالي لديك.
-
----
-
-### بوابة AI الداخلية
-
-مع الإعدادات المركزية، يمكن أيضا تهيئة OpenCode لاستخدام بوابة AI الداخلية لديك فقط.
-
-يمكنك أيضا تعطيل جميع مزودي AI الآخرين، لضمان مرور جميع الطلبات عبر البنية التحتية المعتمدة في مؤسستك.
-
----
-
-### الاستضافة الذاتية
-
-بينما نوصي بتعطيل صفحات المشاركة لضمان ألا تغادر بياناتك مؤسستك مطلقا، يمكننا أيضا مساعدتك على استضافتها ذاتيا على بنيتك التحتية.
-
-هذا موجود حاليا على خارطة طريقنا. إذا كنت مهتما، **<a href={email}>أخبرنا</a>**.
-
----
-
-## الأسئلة الشائعة
-
-<details>
-<summary>ما هو OpenCode Enterprise؟</summary>
-
-OpenCode Enterprise مخصص للمؤسسات التي تريد التأكد من أن الشيفرة والبيانات لا تغادر بنيتها التحتية مطلقا. ويمكن تحقيق ذلك عبر استخدام إعدادات مركزية تتكامل مع SSO وبوابة AI الداخلية لديك.
-
-</details>
-
-<details>
-<summary>كيف أبدأ باستخدام OpenCode Enterprise؟</summary>
-
-ابدأ ببساطة بتجربة داخلية مع فريقك. لا يقوم OpenCode افتراضيا بتخزين شيفرتك أو بيانات السياق، مما يجعل البدء سهلا.
-
-ثم **<a href={email}>اتصل بنا</a>** لمناقشة التسعير وخيارات التنفيذ.
-
-</details>
-
-<details>
-<summary>كيف يعمل تسعير المؤسسات؟</summary>
-
-نقدم تسعيرا للمؤسسات لكل مقعد. إذا كانت لديك بوابة LLM خاصة بك، فلن نفرض رسوما على الرموز (tokens) المستخدمة. لمزيد من التفاصيل، **<a href={email}>اتصل بنا</a>** للحصول على عرض سعر مخصص بناء على احتياجات مؤسستك.
-
-</details>
-
-<details>
-<summary>هل بياناتي آمنة مع OpenCode Enterprise؟</summary>
-
-نعم. لا يقوم OpenCode بتخزين شيفرتك أو بيانات السياق. تتم جميع المعالجة محليا أو عبر استدعاءات API مباشرة إلى مزود AI لديك. ومع الإعدادات المركزية وتكامل SSO، تظل بياناتك آمنة داخل البنية التحتية لمؤسستك.
-
-</details>
-
-<details>
-<summary>هل يمكننا استخدام سجل NPM خاص بنا؟</summary>
-
-يدعم OpenCode سجلات npm الخاصة عبر دعم Bun الأصلي لملف `.npmrc`. إذا كانت مؤسستك تستخدم سجلا خاصا مثل JFrog Artifactory أو Nexus أو ما شابه ذلك، فتأكد من مصادقة المطورين قبل تشغيل OpenCode.
-
-لإعداد المصادقة مع السجل الخاص بك:
-
-```bash
-npm login --registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-```
-
-سيؤدي ذلك إلى إنشاء `~/.npmrc` مع تفاصيل المصادقة. سيلتقط OpenCode هذا تلقائيا.
-
-:::caution
-يجب أن تكون مسجلا الدخول إلى السجل الخاص قبل تشغيل OpenCode.
-:::
-
-بدلا من ذلك، يمكنك تهيئة ملف `.npmrc` يدويا:
-
-```bash title="~/.npmrc"
-registry=https://your-company.jfrog.io/api/npm/npm-virtual/
-//your-company.jfrog.io/api/npm/npm-virtual/:_authToken=${NPM_AUTH_TOKEN}
-```
-
-يجب أن يكون المطورون مسجلين الدخول إلى السجل الخاص قبل تشغيل OpenCode لضمان إمكانية تثبيت الحزم من سجل مؤسستك.
-
-</details>
+Use the local `README.md` and `CYBERVINCI.md` for build-specific guidance. Operational support belongs to the maintainer or team that supplied your source checkout or binary.

@@ -6,6 +6,7 @@ on:
 
 jobs:
   check-duplicates:
+    if: false # Disabled until a trusted CYBERVINCI artifact is configured.
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -20,7 +21,7 @@ jobs:
         id: team-check
         run: |
           LOGIN="${{ github.event.pull_request.user.login }}"
-          if [ "$LOGIN" = "opencode-agent[bot]" ] || grep -qxF "$LOGIN" .github/TEAM_MEMBERS; then
+          if [ "$LOGIN" = "github-actions[bot]" ] || grep -qxF "$LOGIN" .github/TEAM_MEMBERS; then
             echo "is_team=true" >> "$GITHUB_OUTPUT"
             echo "Skipping: $LOGIN is a team member or bot"
           else
@@ -35,9 +36,9 @@ jobs:
         if: steps.team-check.outputs.is_team != 'true'
         run: bun install
 
-      - name: Install opencode
+      - name: Install cybervinci
         if: steps.team-check.outputs.is_team != 'true'
-        run: curl -fsSL https://opencode.ai/install | bash
+        run: echo "CYBERVINCI automation is disabled pending a trusted fork artifact."
 
       - name: Build prompt
         if: steps.team-check.outputs.is_team != 'true'

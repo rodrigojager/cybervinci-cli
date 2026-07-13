@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { define } from "../internal"
+import { define } from "@cybervinci-ai/plugin/v2/effect/plugin"
 import { ProviderV2 } from "../../provider"
 
 type FetchLike = (url: string | URL | Request, init?: RequestInit) => Promise<Response>

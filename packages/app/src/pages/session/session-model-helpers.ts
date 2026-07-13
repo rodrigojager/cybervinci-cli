@@ -1,4 +1,4 @@
-import type { UserMessage } from "@opencode-ai/sdk/v2"
+import type { UserMessage } from "@cybervinci-ai/sdk/v2"
 
 type Local = {
   session: {

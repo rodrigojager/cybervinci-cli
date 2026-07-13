@@ -28,6 +28,12 @@ async function sendToPostHog(event: string, properties: Record<string, any>) {
   }
 }
 
+const statsRepository = process.env.CYBERVINCI_STATS_REPOSITORY?.trim()
+const statsNpmPackage = process.env.CYBERVINCI_STATS_NPM_PACKAGE?.trim()
+if (!statsRepository || !statsNpmPackage) {
+  throw new Error("CYBERVINCI_STATS_REPOSITORY and CYBERVINCI_STATS_NPM_PACKAGE are required.")
+}
+
 interface Asset {
   name: string
   download_count: number
@@ -73,7 +79,7 @@ async function fetchReleases(): Promise<Release[]> {
   const per = 100
 
   while (true) {
-    const url = `https://api.github.com/repos/anomalyco/opencode/releases?page=${page}&per_page=${per}`
+    const url = `https://api.github.com/repos/${statsRepository}/releases?page=${page}&per_page=${per}`
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -188,15 +194,15 @@ async function save(githubTotal: number, npmDownloads: number) {
   )
 }
 
-console.log("Fetching GitHub releases for anomalyco/opencode...\n")
+console.log(`Fetching GitHub releases for ${statsRepository}...\n`)
 
 const releases = await fetchReleases()
 console.log(`\nFetched ${releases.length} releases total\n`)
 
 const { total: githubTotal } = calculate(releases)
 
-console.log("Fetching npm all-time downloads for opencode-ai...\n")
-const npmDownloads = await fetchNpmDownloads("opencode-ai")
+console.log(`Fetching npm all-time downloads for ${statsNpmPackage}...\n`)
+const npmDownloads = await fetchNpmDownloads(statsNpmPackage)
 console.log(`Fetched npm all-time downloads: ${npmDownloads.toLocaleString()}\n`)
 
 await save(githubTotal, npmDownloads)

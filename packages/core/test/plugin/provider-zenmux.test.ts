@@ -1,11 +1,11 @@
 import { describe, expect } from "bun:test"
 import { Effect } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import { PluginV2 } from "@opencode-ai/core/plugin"
-import { PluginHost } from "@opencode-ai/core/plugin/host"
-import { ProviderPlugins } from "@opencode-ai/core/plugin/provider"
-import { ZenmuxPlugin } from "@opencode-ai/core/plugin/provider/zenmux"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Catalog } from "@cybervinci-ai/core/catalog"
+import { PluginV2 } from "@cybervinci-ai/core/plugin"
+import { PluginHost } from "@cybervinci-ai/core/plugin/host"
+import { ProviderPlugins } from "@cybervinci-ai/core/plugin/provider"
+import { ZenmuxPlugin } from "@cybervinci-ai/core/plugin/provider/zenmux"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
 import { testEffect } from "../lib/effect"
 import { PluginTestLayer } from "./fixture"
 
@@ -23,11 +23,11 @@ function required<T>(value: T | undefined): T {
 }
 
 describe("ZenmuxPlugin", () => {
-  it.effect("is registered so legacy referer headers can be applied", () =>
+  it.effect("is registered so CYBERVINCI integration headers can be applied", () =>
     Effect.sync(() => expect(ProviderPlugins.map((item) => item.id)).toContain(PluginV2.ID.make("zenmux"))),
   )
 
-  it.effect("applies the exact legacy Zenmux headers", () =>
+  it.effect("applies the CYBERVINCI Zenmux headers", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       yield* catalog.transform((catalog) => {
@@ -41,12 +41,11 @@ describe("ZenmuxPlugin", () => {
       })
       yield* addPlugin()
       const result = required(yield* catalog.provider.get(ProviderV2.ID.make("zenmux")))
-      expect(result.request.headers).toEqual({ "HTTP-Referer": "https://opencode.ai/", "X-Title": "opencode" })
-      expect(Object.keys(result.request.headers).sort()).toEqual(["HTTP-Referer", "X-Title"])
+      expect(Object.keys(result.request.headers).sort()).toEqual(["X-Title"])
     }),
   )
 
-  it.effect("merges legacy Zenmux headers with existing headers", () =>
+  it.effect("merges CYBERVINCI Zenmux headers with existing headers", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       yield* catalog.transform((catalog) => {
@@ -63,8 +62,7 @@ describe("ZenmuxPlugin", () => {
 
       expect(required(yield* catalog.provider.get(ProviderV2.ID.make("zenmux"))).request.headers).toEqual({
         Existing: "value",
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
+        "X-Title": "cybervinci",
       })
     }),
   )
@@ -91,7 +89,7 @@ describe("ZenmuxPlugin", () => {
     }),
   )
 
-  it.effect("guards legacy Zenmux headers to the exact zenmux provider id", () =>
+  it.effect("guards CYBERVINCI Zenmux headers to the exact zenmux provider id", () =>
     Effect.gen(function* () {
       const catalog = yield* Catalog.Service
       yield* catalog.transform((catalog) => {
