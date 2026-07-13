@@ -2,7 +2,7 @@
 
 ## Runtime split
 
-`dist/server.js` registra auth, hooks, tools e transporte. `dist/tui.js` registra comandos e dialogs. As duas entradas compartilham os mesmos schemas e stores, mas nunca são exportadas no mesmo módulo de plugin.
+`src/server.ts` registra auth, hooks, tools e transporte como plugin interno do host. `src/tui.tsx` registra comandos e dialogs como plugin interno da TUI. As duas entradas compartilham os mesmos schemas e stores e são compiladas diretamente na distribuição do CyberVinci.
 
 ## State scopes
 
@@ -19,8 +19,8 @@
 ## Request path
 
 ```text
-OpenCode -> provider fetch -> session binding -> account selector -> token refresh
-         -> Codex endpoint -> outcome/quota -> stream reservation release
+CyberVinci -> provider fetch -> session binding -> account selector -> token refresh
+            -> Codex endpoint -> outcome/quota -> stream reservation release
 ```
 
 Selection is sticky while the bound account is healthy. Hard failures can fail over. A proactive handoff happens only at an idle boundary.
@@ -29,7 +29,7 @@ Selection is sticky while the bound account is healthy. Hard failures can fail o
 
 Each handoff creates an epoch containing source/target account, cutoff message, summary revision and checkpoint. `experimental.chat.messages.transform` applies the cutoff on every later model call, so old messages cannot reappear on turn two after a handoff.
 
-The original OpenCode transcript is untouched. The transform operates on cloned request messages.
+The original session transcript is untouched. The transform operates on cloned request messages.
 
 ## Summary path
 
