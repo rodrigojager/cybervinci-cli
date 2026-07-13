@@ -15,7 +15,7 @@ $env:CYBERVINCI_VERSION = $version
 bun run packages/cybervinci/script/build.ts --single --baseline --skip-install
 ./installer/windows/build.ps1 `
   -Version $version `
-  -Repository "OWNER/REPOSITORY" `
+  -Repository "rodrigojager/cybervinci-cli" `
   -OutputDirectory "./dist/windows-installer"
 ```
 
@@ -36,7 +36,7 @@ Create a draft release first, upload every file from the output directory, valid
 After the release is public, the native Windows installation command is:
 
 ```powershell
-irm https://github.com/OWNER/REPOSITORY/releases/latest/download/install.ps1 | iex
+irm https://github.com/rodrigojager/cybervinci-cli/releases/latest/download/install.ps1 | iex
 ```
 
 The bootstrap requires a matching external SHA-256 asset. It rejects invalid Authenticode signatures and can enforce a trusted signature with `-RequireAuthenticode`. Local unsigned builds emit a warning; production release assets should be signed before publication.

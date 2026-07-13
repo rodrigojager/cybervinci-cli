@@ -172,6 +172,20 @@
         "@typescript/native-preview": "catalog:",
       },
     },
+    "packages/codex-account-pool": {
+      "name": "@cybervinci-ai/codex-account-pool",
+      "version": "1.17.18",
+      "dependencies": {
+        "@cybervinci-ai/plugin": "workspace:*",
+        "@opentui/solid": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+      },
+    },
     "packages/console/app": {
       "name": "@opencode-ai/console-app",
       "version": "1.17.18",
@@ -427,6 +441,7 @@
         "@aws-sdk/credential-providers": "3.1057.0",
         "@clack/prompts": "1.0.0-alpha.1",
         "@cybervinci-ai/codemode": "workspace:*",
+        "@cybervinci-ai/codex-account-pool": "workspace:*",
         "@cybervinci-ai/llm": "workspace:*",
         "@cybervinci-ai/plugin": "workspace:*",
         "@cybervinci-ai/protocol": "workspace:*",
@@ -964,6 +979,7 @@
       "name": "@cybervinci-ai/tui",
       "version": "1.17.18",
       "dependencies": {
+        "@cybervinci-ai/codex-account-pool": "workspace:*",
         "@cybervinci-ai/core": "workspace:*",
         "@cybervinci-ai/plugin": "workspace:*",
         "@cybervinci-ai/sdk": "workspace:*",
@@ -1505,6 +1521,8 @@
     "@cybervinci-ai/client": ["@cybervinci-ai/client@workspace:packages/client"],
 
     "@cybervinci-ai/codemode": ["@cybervinci-ai/codemode@workspace:packages/codemode"],
+
+    "@cybervinci-ai/codex-account-pool": ["@cybervinci-ai/codex-account-pool@workspace:packages/codex-account-pool"],
 
     "@cybervinci-ai/core": ["@cybervinci-ai/core@workspace:packages/core"],
 

@@ -12,6 +12,13 @@ CYBERVINCI is an unofficial fork of OpenCode focused on ensuring that tool and M
 - Terminal state is claimed once per `callID`; duplicate and late results cannot overwrite it.
 - Timeout metadata includes `reliabilityReason`, `deadlineMs`, `elapsedMs`, and `lastProgressAt` when available.
 
+## Built-in Codex account pool
+
+- The server plugin and TUI account manager are internal default plugins compiled into CyberVinci.
+- No npm package, local `file://` plugin entry, or post-install config patch is required.
+- Existing standalone `opencode-codex-account-pool` config entries are ignored to prevent duplicate hooks.
+- Existing account data under the legacy OpenCode pool directory remains usable; new installations default to the CyberVinci data directory.
+
 Runtime controls:
 
 ```text
@@ -65,14 +72,14 @@ Build the native Windows Setup and GitHub release assets with:
 ```powershell
 ./installer/windows/build.ps1 `
   -Version "1.17.18-cybervinci.1" `
-  -Repository "OWNER/REPOSITORY" `
+  -Repository "rodrigojager/cybervinci-cli" `
   -OutputDirectory "./dist/windows-installer"
 ```
 
 The Setup installs the correct x64 or x64-baseline executable into `%USERPROFILE%\.cybervinci\bin`, updates the user `PATH` idempotently, and registers a Windows uninstaller. Once the generated assets are published from an owned GitHub repository, installation is one command:
 
 ```powershell
-irm https://github.com/OWNER/REPOSITORY/releases/latest/download/install.ps1 | iex
+irm https://github.com/rodrigojager/cybervinci-cli/releases/latest/download/install.ps1 | iex
 ```
 
 There is intentionally no public CYBERVINCI update feed yet. The installer workflow prepares repository-scoped release assets but does not infer or download OpenCode artifacts. CLI and Desktop automatic updates remain disabled. External updates require `CYBERVINCI_ENABLE_EXTERNAL_UPDATES=true`, an explicit `CYBERVINCI_RELEASE_API_URL`, and method-specific trusted targets such as `CYBERVINCI_NPM_PACKAGE` or `CYBERVINCI_HOMEBREW_FORMULA`.

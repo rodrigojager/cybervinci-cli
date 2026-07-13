@@ -1,4 +1,5 @@
 import type { TuiPlugin, TuiPluginModule } from "@cybervinci-ai/plugin/tui"
+import CodexAccountPool from "@cybervinci-ai/codex-account-pool/tui"
 import HomeFooter from "./home/footer"
 import HomeTips from "./home/tips"
 import SidebarContext from "./sidebar/context"
@@ -29,6 +30,7 @@ export function createBuiltinPlugins(options: { experimentalEventSystem: boolean
     SidebarFiles,
     SidebarFooter,
     Notifications,
+    CodexAccountPool,
     PluginManager,
     WhichKey,
     DiffViewer,

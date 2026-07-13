@@ -8,6 +8,7 @@ The product-facing command, packages, configuration, data paths, TUI, and Deskto
 
 - The Windows native CLI builds and runs from this checkout.
 - Reliability enforcement is enabled by default for MCP/tool deadlines and terminal settlement.
+- The Codex Account Pool server and TUI plugins are built in and enabled by default.
 - A per-user Windows CLI Setup now installs `cybervinci` globally and registers a Windows uninstaller.
 - There is no public CYBERVINCI release or automatic-update feed yet.
 - GitHub-ready installer assets can be built locally or with the isolated Windows installer workflow; they are not an official public feed until uploaded to a CYBERVINCI-owned repository.
@@ -21,10 +22,10 @@ The local Setup installs into `%USERPROFILE%\.cybervinci`, places the command in
 After the release assets are uploaded to an owned GitHub repository, the generated release bootstrap supports one-command installation:
 
 ```powershell
-irm https://github.com/OWNER/REPOSITORY/releases/latest/download/install.ps1 | iex
+irm https://github.com/rodrigojager/cybervinci-cli/releases/latest/download/install.ps1 | iex
 ```
 
-The release copy of `install.ps1` has `OWNER/REPOSITORY` embedded by the installer build. It downloads only the CYBERVINCI Setup asset from that repository and verifies its external SHA-256 file before execution.
+The release copy of `install.ps1` has `rodrigojager/cybervinci-cli` embedded by the installer build. It downloads only the CYBERVINCI Setup asset from that repository and verifies its external SHA-256 file before execution.
 
 ## Build locally
 
@@ -56,7 +57,7 @@ Build the Windows Setup and GitHub release assets with:
 ```powershell
 ./installer/windows/build.ps1 `
   -Version "1.17.18-cybervinci.1" `
-  -Repository "OWNER/REPOSITORY" `
+  -Repository "rodrigojager/cybervinci-cli" `
   -OutputDirectory "./dist/windows-installer"
 ```
 
@@ -81,6 +82,12 @@ CYBERVINCI_CLEANUP_TIMEOUT_MS=15000
 ```
 
 The default mode is `enforce`. Progress can renew an idle timeout, but it cannot renew the independent maximum deadline. Cancellation has a bounded grace period, and late tool results cannot overwrite an already settled terminal state.
+
+## Built-in Codex account pool
+
+CyberVinci includes multi-account ChatGPT OAuth rotation without a separate plugin installation or `file://` configuration. Open **Codex: Manage accounts** in the TUI to add accounts, inspect quotas, choose the active/default account, and manage failover. The provider is exposed as `openai-codex-pool`.
+
+The pool stores new data under the CyberVinci XDG data directory and automatically keeps using an existing legacy OpenCode pool directory when one is already present. The explicit overrides are `CYBERVINCI_CODEX_DATA_DIR` and `CYBERVINCI_CODEX_ACCOUNTS_PATH`; the older `OPENCODE_CODEX_*` variables remain migration aliases.
 
 ## Local configuration
 

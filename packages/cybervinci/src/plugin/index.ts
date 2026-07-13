@@ -31,6 +31,7 @@ import type { WorkspaceAdapter } from "@/control-plane/types"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstallationChannel } from "@cybervinci-ai/core/installation/version"
+import { ServerPlugin as CodexAccountPoolPlugin } from "@cybervinci-ai/codex-account-pool/server"
 
 type State = {
   hooks: Hooks[]
@@ -61,17 +62,24 @@ export function experimentalWebSocketsEnabled(input: { enabled: boolean; channel
   return input.enabled || ["local", "dev", "beta"].includes(input.channel ?? InstallationChannel)
 }
 
+function thirdPartyPlugin(plugin: unknown): PluginInstance {
+  // These packages still publish declarations against @opencode-ai/plugin, but their runtime
+  // hook contract is the same one retained by the CyberVinci compatibility layer.
+  return plugin as PluginInstance
+}
+
 // Built-in plugins that are directly imported (not installed from npm)
-function internalPlugins(flags: RuntimeFlags.Info): PluginInstance[] {
+export function internalPlugins(flags: Pick<RuntimeFlags.Info, "experimentalWebSockets">): PluginInstance[] {
   return [
     // Temporary rollout: pre-release builds use WebSockets by default; releases require explicit opt-in.
     (input) =>
       CodexAuthPlugin(input, {
         experimentalWebSockets: experimentalWebSocketsEnabled({ enabled: flags.experimentalWebSockets }),
       }),
+    CodexAccountPoolPlugin,
     CopilotAuthPlugin,
-    GitlabAuthPlugin,
-    PoeAuthPlugin,
+    thirdPartyPlugin(GitlabAuthPlugin),
+    thirdPartyPlugin(PoeAuthPlugin),
     CloudflareWorkersAuthPlugin,
     CloudflareAIGatewayAuthPlugin,
     AzureAuthPlugin,

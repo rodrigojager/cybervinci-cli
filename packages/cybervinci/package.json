@@ -84,6 +84,7 @@
     "@octokit/graphql": "9.0.2",
     "@octokit/rest": "catalog:",
     "@openauthjs/openauth": "catalog:",
+    "@cybervinci-ai/codex-account-pool": "workspace:*",
     "@cybervinci-ai/codemode": "workspace:*",
     "@cybervinci-ai/llm": "workspace:*",
     "@cybervinci-ai/plugin": "workspace:*",

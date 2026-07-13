@@ -7,7 +7,13 @@ import { isRecord } from "@/util/record"
 import { Npm } from "@cybervinci-ai/core/npm"
 
 // Old npm package names for plugins that are now built-in
-export const DEPRECATED_PLUGIN_PACKAGES = ["cybervinci-openai-codex-auth", "cybervinci-copilot-auth"]
+export const DEPRECATED_PLUGIN_PACKAGES = [
+  "cybervinci-openai-codex-auth",
+  "cybervinci-copilot-auth",
+  "opencode-codex-account-pool",
+  "cybervinci-codex-account-pool",
+  "@cybervinci-ai/codex-account-pool",
+]
 
 export function isDeprecatedPlugin(spec: string) {
   return DEPRECATED_PLUGIN_PACKAGES.some((pkg) => spec.includes(pkg))
