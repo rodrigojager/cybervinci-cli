@@ -13,6 +13,7 @@ import { CodexAuthPlugin } from "./openai/codex"
 import { Session } from "@/session/session"
 import { NamedError } from "@cybervinci-ai/core/util/error"
 import { CopilotAuthPlugin } from "./github-copilot/copilot"
+import { ModalPlugin } from "./modal/modal"
 import { gitlabAuthPlugin as GitlabAuthPlugin } from "opencode-gitlab-auth"
 import { PoeAuthPlugin } from "opencode-poe-auth"
 import { CloudflareAIGatewayAuthPlugin, CloudflareWorkersAuthPlugin } from "./cloudflare"
@@ -63,7 +64,7 @@ export function experimentalWebSocketsEnabled(input: { enabled: boolean; channel
 }
 
 function thirdPartyPlugin(plugin: unknown): PluginInstance {
-  // These packages still publish declarations against @opencode-ai/plugin, but their runtime
+  // These packages still publish declarations against @cybervinci-ai/plugin, but their runtime
   // hook contract is the same one retained by the CyberVinci compatibility layer.
   return plugin as PluginInstance
 }
@@ -78,6 +79,7 @@ export function internalPlugins(flags: Pick<RuntimeFlags.Info, "experimentalWebS
       }),
     CodexAccountPoolPlugin,
     CopilotAuthPlugin,
+    ModalPlugin,
     thirdPartyPlugin(GitlabAuthPlugin),
     thirdPartyPlugin(PoeAuthPlugin),
     CloudflareWorkersAuthPlugin,

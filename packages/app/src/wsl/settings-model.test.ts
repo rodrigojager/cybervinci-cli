@@ -48,7 +48,7 @@ describe("WSL server settings presentation", () => {
         matchesDesktop: null,
         error: null,
       }),
-    ).toBe("Install CYBERVINCI")
+    ).toBe("wsl.onboarding.installCyberVinci")
     expect(
       wslCyberVinciAction({
         distro: "Debian",
@@ -58,7 +58,7 @@ describe("WSL server settings presentation", () => {
         matchesDesktop: false,
         error: null,
       }),
-    ).toBe("Update CYBERVINCI")
+    ).toBe("wsl.onboarding.updateCyberVinci")
     expect(
       wslCyberVinciAction({
         distro: "Debian",

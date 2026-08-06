@@ -74,7 +74,7 @@ const cli = yargs(args)
 
     process.env.AGENT = "1"
     process.env.CYBERVINCI = "1"
-    // Optional compatibility signal for third-party OpenCode plugins retained by this fork.
+    // Optional compatibility signal for third-party CYBERVINCI plugins retained by this fork.
     if (process.env.CYBERVINCI_ENABLE_OPENCODE_COMPAT === "true") process.env.OPENCODE ??= "1"
     process.env.CYBERVINCI_PID = String(process.pid)
   })

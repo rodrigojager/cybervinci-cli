@@ -24,6 +24,8 @@ for (const channel of channels) {
     expect(config.extraMetadata?.desktopName).toBe(`${channel.appId}.desktop`)
     expect(config.linux?.executableName).toBe(channel.appId)
     expect(config.linux?.desktop?.entry?.StartupWMClass).toBe(channel.appId)
+    expect(config.deb?.fpm).toContainEqual(expect.stringContaining(`/usr/share/metainfo/${channel.appId}.metainfo.xml`))
+    expect(config.rpm?.fpm).toContainEqual(expect.stringContaining(`/usr/share/metainfo/${channel.appId}.metainfo.xml`))
   })
 }
 
@@ -37,8 +39,16 @@ test("keeps a hidden prod launcher for old Linux pins", async () => {
   if (previous === undefined) delete process.env.CYBERVINCI_CHANNEL
   else process.env.CYBERVINCI_CHANNEL = previous
 
-  expect(config.deb?.fpm?.[0]).toEndWith(`${legacyDesktopEntry}=/usr/share/applications/cybervinci-desktop.desktop`)
-  expect(config.rpm?.fpm?.[0]).toEndWith(`${legacyDesktopEntry}=/usr/share/applications/cybervinci-desktop.desktop`)
+  expect(
+    config.deb?.fpm?.some((entry) =>
+      entry.endsWith("cybervinci-desktop.desktop=/usr/share/applications/cybervinci-desktop.desktop"),
+    ),
+  ).toBe(true)
+  expect(
+    config.rpm?.fpm?.some((entry) =>
+      entry.endsWith("cybervinci-desktop.desktop=/usr/share/applications/cybervinci-desktop.desktop"),
+    ),
+  ).toBe(true)
 
   const desktop = await Bun.file(legacyDesktopEntry).text()
   expect(desktop).toContain("Exec=/opt/CYBERVINCI/ai.cybervinci.desktop %U")
@@ -46,3 +56,36 @@ test("keeps a hidden prod launcher for old Linux pins", async () => {
   expect(desktop).toContain("StartupWMClass=ai.cybervinci.desktop")
   expect(desktop).toContain("NoDisplay=true")
 })
+
+test("bundles the CLI outside the dev app archive", async () => {
+  const previous = process.env.CYBERVINCI_CHANNEL
+  process.env.CYBERVINCI_CHANNEL = "dev"
+  const module = await import("./electron-builder.config.ts?cli-resource")
+  const config = module.default as Configuration
+  if (previous === undefined) delete process.env.CYBERVINCI_CHANNEL
+  else process.env.CYBERVINCI_CHANNEL = previous
+
+  expect(config.files).toContain("!resources/cybervinci-cli*")
+  expect(config.extraResources).toContainEqual({
+    from: "resources/",
+    to: "",
+    filter: ["cybervinci-cli*"],
+  })
+})
+
+for (const channel of ["beta", "prod"] as const) {
+  test(`does not bundle the CLI in ${channel} builds`, async () => {
+    const previous = process.env.CYBERVINCI_CHANNEL
+    process.env.CYBERVINCI_CHANNEL = channel
+    const module = await import(`./electron-builder.config.ts?no-cli-resource=${channel}`)
+    const config = module.default as Configuration
+    if (previous === undefined) delete process.env.CYBERVINCI_CHANNEL
+    else process.env.CYBERVINCI_CHANNEL = previous
+
+    expect(config.extraResources).not.toContainEqual({
+      from: "resources/",
+      to: "",
+      filter: ["cybervinci-cli*"],
+    })
+  })
+}

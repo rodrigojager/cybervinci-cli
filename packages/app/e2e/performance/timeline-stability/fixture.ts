@@ -97,6 +97,7 @@ export async function setupTimeline(
     locale?: string
     deviceScaleFactor?: number
     seedHistory?: boolean
+    protocol?: "v1" | "v2"
   } = {},
 ) {
   const sessions = input.sessions ?? [session()]
@@ -113,7 +114,8 @@ export async function setupTimeline(
     server: `http://${process.env.PLAYWRIGHT_SERVER_HOST ?? "127.0.0.1"}:${process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"}`,
     retry: input.eventRetry ?? 20,
   })
-  await mockCYBERVINCIServer(page, {
+  await mockOpenCodeServer(page, {
+    protocol: input.protocol,
     directory,
     project: project(),
     provider: provider(),
@@ -136,6 +138,9 @@ export async function setupTimeline(
         },
       }),
     )
+    if (settings.newLayoutDesigns === false) {
+      localStorage.setItem("app-version.v1", JSON.stringify({ version: "1.17.20" }))
+    }
   }, input.settings ?? {})
   if (input.locale) {
     await page.addInitScript((locale) => {
@@ -192,7 +197,9 @@ export async function setupTimeline(
       )
     },
     async waitForPart(partID: string) {
-      await expect(page.locator(`[data-timeline-part-id="${partID}"]`).first()).toBeVisible()
+      const part = page.locator(`[data-timeline-part-id="${partID}"]`)
+      await expect(part).toHaveCount(1)
+      await expect(part).toBeVisible()
     },
   }
 }

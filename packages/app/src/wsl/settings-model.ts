@@ -53,8 +53,8 @@ export const wslRuntimeRetryable = (runtime: WslServerRuntime) =>
 
 export function wslCyberVinciAction(check?: WslCyberVinciCheck) {
   if (!check) return
-  if (!check.resolvedPath) return "Install CYBERVINCI"
-  if (check.matchesDesktop === false) return "Update CYBERVINCI"
+  if (!check.resolvedPath) return "wsl.onboarding.installCyberVinci"
+  if (check.matchesDesktop === false) return "wsl.onboarding.updateCyberVinci"
 }
 
 export function wslDistroReady(state: WslServersState | undefined, name: string) {

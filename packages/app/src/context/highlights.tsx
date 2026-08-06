@@ -43,7 +43,7 @@ export const { use: useHighlights, provider: HighlightsProvider } = createSimple
       setRange({ from: previous, to: platform.version })
 
       // Release notes stay disabled until CYBERVINCI has a local or CYBERVINCI-owned
-      // changelog source. Never fetch OpenCode's product changelog for this fork.
+      // changelog source. Never fetch CYBERVINCI's product changelog for this fork.
       markSeen()
     })
 

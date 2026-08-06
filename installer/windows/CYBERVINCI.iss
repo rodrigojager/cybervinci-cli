@@ -50,7 +50,7 @@ UsePreviousAppDir=yes
 VersionInfoDescription=CYBERVINCI CLI installer
 VersionInfoProductName=CYBERVINCI CLI
 VersionInfoCompany=CYBERVINCI
-VersionInfoCopyright=CYBERVINCI contributors and upstream OpenCode contributors
+VersionInfoCopyright=CYBERVINCI contributors and upstream CYBERVINCI contributors
 
 [Files]
 Source: "{#SourceBinary}"; DestDir: "{%USERPROFILE}\.cybervinci\bin"; DestName: "cybervinci.exe"; Flags: ignoreversion; Check: HasAvx2

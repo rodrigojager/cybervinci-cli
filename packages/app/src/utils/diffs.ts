@@ -1,7 +1,8 @@
 import type { SnapshotFileDiff, VcsFileDiff } from "@cybervinci-ai/sdk/v2"
+import type { FileDiffInfo } from "@cybervinci-ai/client/promise"
 import type { Message } from "@cybervinci-ai/sdk/v2/client"
 
-type Diff = SnapshotFileDiff | VcsFileDiff
+type Diff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
 
 function diff(value: unknown): value is Diff {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false

@@ -1,20 +1,28 @@
-import type { RootLoadArgs } from "./types"
+import type { SessionApi } from "@cybervinci-ai/client/promise"
+import { normalizeSessionInfo } from "@/utils/session"
+import type { CyberVinciClient } from "@cybervinci-ai/sdk/v2/client"
 
-export async function loadRootSessionsWithFallback(input: RootLoadArgs) {
+export async function loadRootSessions(input: { api: Pick<SessionApi, "list">; directory: string; limit: number }) {
+  const result = await input.api.list({
+    directory: input.directory,
+    parentID: null,
+    limit: input.limit,
+    order: "desc",
+  })
+  return {
+    data: result.data.map(normalizeSessionInfo),
+    limit: input.limit,
+    limited: true,
+  } as const
+}
+
+export async function loadRootSessionsV1(input: { client: CyberVinciClient; directory: string; limit: number }) {
   try {
-    const result = await input.list({ directory: input.directory, roots: true, limit: input.limit })
-    return {
-      data: result.data,
-      limit: input.limit,
-      limited: true,
-    } as const
+    const result = await input.client.session.list({ directory: input.directory, roots: true, limit: input.limit })
+    return { data: result.data, limit: input.limit, limited: true } as const
   } catch {
-    const result = await input.list({ directory: input.directory, roots: true })
-    return {
-      data: result.data,
-      limit: input.limit,
-      limited: false,
-    } as const
+    const result = await input.client.session.list({ directory: input.directory, roots: true })
+    return { data: result.data, limit: input.limit, limited: false } as const
   }
 }
 

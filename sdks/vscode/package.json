@@ -1,9 +1,13 @@
 {
-  "name": "cybervinci",
-  "displayName": "CYBERVINCI",
-  "description": "CYBERVINCI for VS Code",
-  "version": "1.17.18",
-  "publisher": "cybervinci",
+  "name": "opencode",
+  "displayName": "opencode",
+  "description": "opencode for VS Code",
+  "version": "1.18.14",
+  "publisher": "sst-dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anomalyco/opencode"
+  },
   "license": "MIT",
   "icon": "images/icon.png",
   "galleryBanner": {

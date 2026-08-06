@@ -15,6 +15,9 @@ const signScript = path.join(rootDir, "script", "sign-windows.ps1")
 const legacyDesktopEntry = path.join(packageDir, "resources", "linux", "cybervinci-desktop.desktop")
 const legacyDesktopEntryFpm = `${legacyDesktopEntry}=/usr/share/applications/cybervinci-desktop.desktop`
 
+const metainfoFpm = (appId: string) =>
+  `${path.join(packageDir, "resources", `${appId}.metainfo.xml`)}=/usr/share/metainfo/${appId}.metainfo.xml`
+
 async function signWindows(configuration: { path: string }) {
   if (process.platform !== "win32") return
   if (process.env.GITHUB_ACTIONS !== "true") return
@@ -52,8 +55,17 @@ const getBase = (appId: string): Configuration => ({
   extraMetadata: {
     desktopName: `${appId}.desktop`,
   },
-  files: ["out/**/*", "resources/**/*"],
+  files: ["out/**/*", "resources/**/*", "!resources/cybervinci-cli*"],
   extraResources: [
+    ...(channel === "dev"
+      ? [
+          {
+            from: "resources/",
+            to: "",
+            filter: ["cybervinci-cli*"],
+          },
+        ]
+      : []),
     {
       from: "native/",
       to: "native/",
@@ -116,7 +128,8 @@ function getConfig() {
         ...base,
         appId,
         productName: "CYBERVINCI Dev",
-        rpm: { packageName: "cybervinci-dev" },
+        deb: { fpm: [metainfoFpm(appId)] },
+        rpm: { packageName: "cybervinci-dev", fpm: [metainfoFpm(appId)] },
       }
     }
     case "beta": {
@@ -125,7 +138,9 @@ function getConfig() {
         appId,
         productName: "CYBERVINCI Beta",
         protocols: { name: "CYBERVINCI Beta", schemes: ["cybervinci"] },
-        rpm: { packageName: "cybervinci-beta" },
+        publish: { provider: "github", owner: "rodrigojager", repo: "cybervinci-cli", channel: "latest" },
+        deb: { fpm: [metainfoFpm(appId)] },
+        rpm: { packageName: "cybervinci-beta", fpm: [metainfoFpm(appId)] },
       }
     }
     case "prod": {
@@ -134,8 +149,9 @@ function getConfig() {
         appId,
         productName: "CYBERVINCI",
         protocols: { name: "CYBERVINCI", schemes: ["cybervinci"] },
-        deb: { fpm: [legacyDesktopEntryFpm] },
-        rpm: { packageName: "cybervinci", fpm: [legacyDesktopEntryFpm] },
+        publish: { provider: "github", owner: "rodrigojager", repo: "cybervinci-cli", channel: "latest" },
+        deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
+        rpm: { packageName: "cybervinci", fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
       }
     }
   }
