@@ -7,3 +7,6 @@ on:
 jobs:
   check-guidelines:
     if: false # Disabled until a trusted CYBERVINCI artifact is configured.
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Review automation is disabled."
