@@ -25,4 +25,7 @@ export const dict = {
     "CLI {{path}} ünvanına quraşdırıldı\n\n'cybervinci' əmrindən istifadə etmək üçün terminalı yenidən başladın.",
   "desktop.cli.failed.title": "Quraşdırma uğursuz oldu",
   "desktop.cli.failed.message": "CLI quraşdırıla bilmədi: {{error}}",
+
+  "desktop.error.dev.rootNotFound":
+    "Kök element tapılmadı. index.html-ə əlavə etməyi unutmusunuz? Yoxsa id atributu səhv yazılıb?",
 }

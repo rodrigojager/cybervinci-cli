@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "1.18.14",
+  "version": "1.18.18",
   "name": "cybervinci",
   "type": "module",
   "license": "MIT",

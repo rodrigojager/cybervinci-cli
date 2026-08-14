@@ -2,7 +2,7 @@
   "name": "@cybervinci-ai/web",
   "type": "module",
   "license": "MIT",
-  "version": "1.18.14",
+  "version": "1.18.18",
   "scripts": {
     "dev": "astro dev",
     "dev:remote": "VITE_API_URL=https://api.opencode.ai astro dev",

@@ -1,6 +1,6 @@
 # CYBERVINCI
 
-CYBERVINCI is an unofficial fork of OpenCode focused on ensuring that tool and MCP operations cannot leave a session permanently busy. This checkout includes OpenCode `v1.18.14`, commit `65cf14df16c191f3e9684f0d9a8bae69103ced6d`.
+CYBERVINCI is an unofficial fork of OpenCode focused on ensuring that tool and MCP operations cannot leave a session permanently busy. This checkout includes OpenCode `v1.18.18`, commit `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d`.
 
 ## Reliability changes
 
@@ -71,7 +71,7 @@ Build the native Windows Setup and GitHub release assets with:
 
 ```powershell
 ./installer/windows/build.ps1 `
-  -Version "1.18.14-cybervinci.1" `
+  -Version "1.18.18-cybervinci.1" `
   -Repository "rodrigojager/cybervinci-cli" `
   -OutputDirectory "./dist/windows-installer"
 ```

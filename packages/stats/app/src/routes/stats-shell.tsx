@@ -20,7 +20,8 @@ export type ThemePreference = (typeof themePreferences)[number]
 
 const compactNumberFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
-  maximumFractionDigits: 1,
+  maximumFractionDigits: 0,
+  roundingIncrement: 5,
 })
 
 export const getGitHubStars = query(async () => {

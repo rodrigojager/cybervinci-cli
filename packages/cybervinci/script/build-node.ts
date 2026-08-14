@@ -21,6 +21,7 @@ await Bun.build({
   external: ["jsonc-parser", "@lydell/node-pty"],
   define: {
     CYBERVINCI_MODELS_DEV: generated.modelsData,
+    CYBERVINCI_VERSION: `'${Script.version}'`,
     CYBERVINCI_CHANNEL: `'${Script.channel}'`,
   },
   files: {
