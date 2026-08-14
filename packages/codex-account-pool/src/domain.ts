@@ -69,7 +69,7 @@ export const accountQuotaSchema = z.object({
   credits: z.object({
     hasCredits: z.boolean().optional(),
     unlimited: z.boolean().optional(),
-    balance: z.union([z.string(), z.number()]).optional(),
+    balance: z.preprocess((value) => value === null ? undefined : value, z.union([z.string(), z.number()]).optional()),
   }).optional(),
   fetchedAt: z.number(),
   source: z.enum(["usage-endpoint", "headers", "response"]),

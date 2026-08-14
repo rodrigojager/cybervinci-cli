@@ -48,4 +48,36 @@ describe("AccountStore", () => {
     expect(snapshot.accounts).toHaveLength(2)
     expect(snapshot.accounts.map((account) => account.workspaceAccountID).sort()).toEqual(["workspace-1", "workspace-2"])
   })
+
+  test("accepts null credit balances from older quota snapshots", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-pool-"))
+    const path = join(directory, "accounts.json")
+    directories.push(directory)
+    await Bun.write(path, JSON.stringify({
+      version: 2,
+      initialized: true,
+      revision: 1,
+      order: ["account"],
+      accounts: [{
+        id: "account",
+        label: "Account",
+        accessToken: "access",
+        refreshToken: "refresh",
+        expiresAt: 1,
+        enabled: true,
+        createdAt: 1,
+        updatedAt: 1,
+        health: { successes: 0, failures: 0 },
+        quota: {
+          credits: { balance: null },
+          fetchedAt: 1,
+          source: "usage-endpoint",
+        },
+      }],
+    }))
+
+    const snapshot = await new AccountStore(path).snapshot()
+
+    expect(snapshot.accounts[0].quota?.credits?.balance).toBeUndefined()
+  })
 })
