@@ -46,16 +46,15 @@ export function observeElementOffsetReconnectAware<TScrollElement extends Elemen
   }
   const observer = new targetWindow.MutationObserver((records) => {
     if (!active) return
-    records.forEach((record) => {
-      if (record.target === element || element.contains(record.target)) return
-      if (mutationNodesContainElement(record.removedNodes, element)) {
-        removed = true
-        clearCheck()
-      }
-      if (!removed || !element.isConnected || !mutationNodesContainElement(record.addedNodes, element)) return
-      removed = false
-      startCheck()
-    })
+    const relevant = records.filter((record) => record.target !== element && !element.contains(record.target))
+    if (relevant.some((record) => mutationNodesContainElement(record.removedNodes, element))) {
+      removed = true
+      clearCheck()
+    }
+    if (!removed || !element.isConnected) return
+    if (!relevant.some((record) => mutationNodesContainElement(record.addedNodes, element))) return
+    removed = false
+    startCheck()
   })
   // Session routes are replaced below persistent main; body is the fallback for isolated hosts.
   observer.observe(root, { childList: true, subtree: true })
