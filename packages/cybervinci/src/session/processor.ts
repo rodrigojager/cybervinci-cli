@@ -779,7 +779,10 @@ const layer = Layer.effect(
 
         yield* Effect.forEach(
           Object.values(ctx.toolcalls),
-          (call) => Deferred.await(call.done).pipe(Effect.timeout("250 millis"), Effect.ignore),
+          // Interrupted tools can still be committing a bounded/truncated result.
+          // Give that uninterruptible settlement enough time on loaded runners
+          // before replacing it with the generic aborted state.
+          (call) => Deferred.await(call.done).pipe(Effect.timeout("5 seconds"), Effect.ignore),
           { concurrency: "unbounded" },
         )
 
