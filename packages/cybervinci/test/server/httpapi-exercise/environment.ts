@@ -11,8 +11,8 @@ process.env.XDG_CONFIG_HOME = path.join(exerciseGlobalRoot, "config")
 process.env.XDG_STATE_HOME = path.join(exerciseGlobalRoot, "state")
 process.env.XDG_CACHE_HOME = path.join(exerciseGlobalRoot, "cache")
 process.env.CYBERVINCI_DISABLE_SHARE = "true"
-export const exerciseConfigDirectory = path.join(exerciseGlobalRoot, "config", "opencode")
-export const exerciseDataDirectory = path.join(exerciseGlobalRoot, "data", "opencode")
+export const exerciseConfigDirectory = path.join(exerciseGlobalRoot, "config", "cybervinci")
+export const exerciseDataDirectory = path.join(exerciseGlobalRoot, "data", "cybervinci")
 
 const preserveExerciseDatabase = !!process.env.CYBERVINCI_HTTPAPI_EXERCISE_DB
 export const exerciseDatabasePath =
