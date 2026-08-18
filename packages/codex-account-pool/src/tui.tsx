@@ -3,7 +3,7 @@ import type { TuiPlugin, TuiPluginModule, TuiDialogSelectOption } from "@cybervi
 import { spawn } from "node:child_process"
 import { SettingsStore } from "./config"
 import { AccountStore } from "./store"
-import { BindingStore } from "./bindings"
+import { BindingStore, orderAccounts } from "./bindings"
 import { QuotaService, blockedUntil } from "./quota"
 import { AccountActionStore } from "./actions"
 import type { ModelProfile, Settings } from "./domain"
@@ -15,6 +15,10 @@ function openExternal(url: string) {
   const command = process.platform === "win32" ? ["rundll32.exe", "url.dll,FileProtocolHandler", url] : process.platform === "darwin" ? ["open", url] : ["xdg-open", url]
   const child = spawn(command[0], command.slice(1), { detached: true, stdio: "ignore" })
   child.unref()
+}
+
+function priorityLabel(index: number) {
+  return ["Primary", "Secondary", "Tertiary"][index] ?? `Priority ${index + 1}`
 }
 
 const tui: TuiPlugin = async (api) => {
@@ -144,9 +148,14 @@ const tui: TuiPlugin = async (api) => {
   async function accountDetails(account: any) {
     const sid = currentSession()
     const binding = sid ? await bindings.get(sid) : undefined
+    const snapshot = await accounts.snapshot()
+    const ordered = orderAccounts(snapshot.accounts, snapshot.order)
+    const priority = ordered.findIndex((item) => item.id === account.id)
     const options: TuiDialogSelectOption<string>[] = [
       { title: "Set active for current session", value: "active", disabled: !sid || !account.enabled },
-      { title: "Set default for new sessions", value: "default", disabled: !account.enabled },
+      { title: "Set as primary", value: "primary", disabled: priority === 0 },
+      { title: "Move up in priority", value: "up", disabled: priority <= 0 },
+      { title: "Move down in priority", value: "down", disabled: priority < 0 || priority >= ordered.length - 1 },
       { title: "Rename", value: "rename" },
       { title: account.enabled ? "Disable" : "Enable", value: "toggle" },
       { title: "Details", value: "details" },
@@ -155,16 +164,18 @@ const tui: TuiPlugin = async (api) => {
       { title: "Remove", value: "remove" },
       { title: "Back", value: "back" },
     ]
-    select(`${account.label}${binding?.accountID === account.id ? " (active)" : ""}`, options, async (action) => {
+    select(`${account.label} (${priorityLabel(priority)})${binding?.accountID === account.id ? " (active)" : ""}`, options, async (action) => {
       if (action === "back") return accountsDialog()
       if (action === "active" && sid) { await bindings.bind(sid, account.id, { pinnedByUser: true }); api.ui.toast({ message: "Account bound to current session", variant: "success" }); return accountsDialog() }
-      if (action === "default") { await accounts.setDefault(account.id); return accountsDialog() }
+      if (action === "primary") { await accounts.setPriority(account.id, 0); return accountsDialog() }
+      if (action === "up") { await accounts.setPriority(account.id, priority - 1); return accountsDialog() }
+      if (action === "down") { await accounts.setPriority(account.id, priority + 1); return accountsDialog() }
       if (action === "toggle") { await accounts.setEnabled(account.id, !account.enabled); return accountsDialog() }
       if (action === "quota") { await quota.refresh(account, true).catch((error) => api.ui.toast({ message: String(error), variant: "error" })); return accountsDialog() }
       if (action === "details") {
         const affected = await bindings.affected(account.id)
         const quota = account.quota
-        return dialog.replace(() => <DialogAlert title={account.label} message={`Email: ${account.email ?? "unknown"}\nWorkspace: ${account.workspaceAccountID ?? "unknown"}\nOrganization: ${account.organizationID ?? "unknown"}\nPlan: ${account.planType ?? "unknown"}\nEnabled: ${account.enabled ? "yes" : "no"}\nSessions: ${affected.length}\nPrimary: ${quota?.primary?.usedPercent ?? "?"}%${quota?.primary?.resetAt ? `, reset ${new Date(quota.primary.resetAt).toLocaleString()}` : ""}\nSecondary: ${quota?.secondary?.usedPercent ?? "?"}%${quota?.secondary?.resetAt ? `, reset ${new Date(quota.secondary.resetAt).toLocaleString()}` : ""}\nToken expires: ${new Date(account.expiresAt).toLocaleString()}\nSuccesses/failures: ${account.health.successes}/${account.health.failures}`} onConfirm={() => accountDetails(account)} />)
+        return dialog.replace(() => <DialogAlert title={account.label} message={`Pool priority: ${priority + 1} (${priorityLabel(priority)})\nEmail: ${account.email ?? "unknown"}\nWorkspace: ${account.workspaceAccountID ?? "unknown"}\nOrganization: ${account.organizationID ?? "unknown"}\nPlan: ${account.planType ?? "unknown"}\nEnabled: ${account.enabled ? "yes" : "no"}\nSessions: ${affected.length}\nPrimary quota window: ${quota?.primary?.usedPercent ?? "?"}%${quota?.primary?.resetAt ? `, reset ${new Date(quota.primary.resetAt).toLocaleString()}` : ""}\nSecondary quota window: ${quota?.secondary?.usedPercent ?? "?"}%${quota?.secondary?.resetAt ? `, reset ${new Date(quota.secondary.resetAt).toLocaleString()}` : ""}\nToken expires: ${new Date(account.expiresAt).toLocaleString()}\nSuccesses/failures: ${account.health.successes}/${account.health.failures}`} onConfirm={() => accountDetails(account)} />)
       }
       if (action === "rename") return dialog.replace(() => <DialogPrompt title="Rename account" value={account.label} onConfirm={async (label: string) => { await accounts.renameAccount(account.id, label); accountsDialog() }} onCancel={() => accountsDialog()} />)
       if (action === "reauth") return startOAuth(0)
@@ -202,12 +213,13 @@ const tui: TuiPlugin = async (api) => {
     const snapshot = await accounts.snapshot()
     const sid = currentSession()
     const binding = sid ? await bindings.get(sid) : undefined
-    const rows: TuiDialogSelectOption<any>[] = snapshot.accounts.map((account) => {
+    const ordered = orderAccounts(snapshot.accounts, snapshot.order)
+    const rows: TuiDialogSelectOption<any>[] = ordered.map((account, index) => {
       const primary = account.quota?.primary?.usedPercent
       const secondary = account.quota?.secondary?.usedPercent
       const blocked = blockedUntil(account)
       const quotaText = blocked > Date.now() ? `blocked until ${new Date(blocked).toLocaleTimeString()}` : primary !== undefined ? `${primary}% / ${secondary ?? "?"}%` : "quota unknown"
-      return { title: `${binding?.accountID === account.id ? "●" : "○"} ${account.label}`, description: `${account.email ?? account.workspaceAccountID ?? ""} ${quotaText}${account.enabled ? "" : " disabled"}`, value: account }
+      return { title: `${index + 1}. ${binding?.accountID === account.id ? "●" : "○"} ${account.label}`, description: `${priorityLabel(index)} | ${account.email ?? account.workspaceAccountID ?? ""} ${quotaText}${account.enabled ? "" : " disabled"}`, value: account }
     })
     rows.push({ title: "+ Add account", value: { add: true } })
     rows.push({ title: "Refresh all quotas", value: { refresh: true } })

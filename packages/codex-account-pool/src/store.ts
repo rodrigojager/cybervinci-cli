@@ -6,6 +6,23 @@ import { atomicWrite, paths, readJson, transact } from "./storage"
 
 const emptyAccounts = (): AccountsFile => ({ version: 2, initialized: false, revision: 0, order: [], accounts: [] })
 
+function normalizePriority(data: AccountsFile) {
+  const accountIDs = new Set(data.accounts.map((account) => account.id))
+  const seen = new Set<string>()
+  const order: string[] = []
+  const append = (id: string | undefined) => {
+    if (!id || !accountIDs.has(id) || seen.has(id)) return
+    seen.add(id)
+    order.push(id)
+  }
+  for (const id of data.order) append(id)
+  if (!order.length) append(data.defaultAccountID)
+  for (const account of data.accounts) append(account.id)
+  data.order = order
+  data.defaultAccountID = order[0]
+  return data
+}
+
 const legacySchema = z.object({
   version: z.literal(1),
   initialized: z.boolean().default(false),
@@ -35,7 +52,7 @@ export class AccountStore {
 
   private async migrate() {
     try {
-      return await readJson(this.path, accountsFileSchema, emptyAccounts)
+      return normalizePriority(await readJson(this.path, accountsFileSchema, emptyAccounts))
     } catch (error) {
       const raw = JSON.parse(await readFile(this.path, "utf8"))
       const legacy = legacySchema.safeParse(raw)
@@ -45,13 +62,14 @@ export class AccountStore {
         initialized: legacy.data.initialized,
         revision: 1,
         defaultAccountID: legacy.data.active,
-        order: legacy.data.order,
+        order: [legacy.data.active, ...legacy.data.order].filter((id): id is string => Boolean(id)),
         accounts: legacy.data.accounts.map((item) => accountSchema.parse({
           id: item.id, label: item.label, email: item.email, workspaceAccountID: item.accountId,
           accessToken: item.access, refreshToken: item.refresh, expiresAt: item.expires,
           enabled: item.enabled, createdAt: item.createdAt, updatedAt: item.updatedAt, health: item.health,
         })),
       }
+      normalizePriority(migrated)
       await atomicWrite(`${this.path}.v1.backup`, raw, true)
       await atomicWrite(this.path, migrated, true)
       return migrated
@@ -87,7 +105,9 @@ export class AccountStore {
     return transact({
       key: "accounts", path: this.path, schema: accountsFileSchema, fallback: emptyAccounts, secret: true,
       async update(data) {
+        normalizePriority(data)
         const result = await fn(data)
+        normalizePriority(data)
         data.revision++
         return result
       },
@@ -118,8 +138,6 @@ export class AccountStore {
       if (account) {
         Object.assign(account, Object.fromEntries(Object.entries(normalized).filter(([, value]) => value !== undefined)), { updatedAt: now, enabled: true })
         if (normalized.label) account.label = normalized.label
-        data.defaultAccountID = account.id
-        data.order = [account.id, ...data.order.filter((id) => id !== account.id)]
         data.initialized = true
         return structuredClone(account)
       }
@@ -134,7 +152,6 @@ export class AccountStore {
       })
       data.accounts.push(next)
       data.order.push(next.id)
-      data.defaultAccountID = next.id
       data.initialized = true
       return structuredClone(next)
     })
@@ -165,10 +182,17 @@ export class AccountStore {
   }
 
   async setDefault(id: string) {
+    return this.setPriority(id, 0)
+  }
+
+  async setPriority(id: string, position: number) {
     return this.update((data) => {
       if (!data.accounts.some((item) => item.id === id)) return false
-      data.defaultAccountID = id
-      data.order = [id, ...data.order.filter((item) => item !== id)]
+      const order = data.order.filter((item) => item !== id)
+      const index = Math.max(0, Math.min(Math.trunc(position), order.length))
+      order.splice(index, 0, id)
+      data.order = order
+      data.defaultAccountID = order[0]
       return true
     })
   }
@@ -190,7 +214,7 @@ export class AccountStore {
       const before = data.accounts.length
       data.accounts = data.accounts.filter((item) => item.id !== id)
       data.order = data.order.filter((item) => item !== id)
-      if (data.defaultAccountID === id) data.defaultAccountID = data.order.find((item) => data.accounts.some((account) => account.id === item && account.enabled))
+      data.defaultAccountID = data.order[0]
       return before !== data.accounts.length
     })
   }
@@ -223,10 +247,7 @@ export class AccountStore {
   }
 
   async moveToBack(id: string) {
-    return this.update((data) => {
-      data.order = [...data.order.filter((item) => item !== id), id]
-      if (data.defaultAccountID === id) data.defaultAccountID = data.order.find((item) => data.accounts.some((account) => account.id === item && account.enabled))
-    })
+    return this.setPriority(id, Number.MAX_SAFE_INTEGER)
   }
 }
 

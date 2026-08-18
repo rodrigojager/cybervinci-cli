@@ -31,6 +31,7 @@ import { ModelV2 } from "@cybervinci-ai/core/model"
 import { ModelStatus } from "./model-status"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderError } from "./error"
+import { errorMessage } from "@/util/error"
 
 const OPENAI_HEADER_TIMEOUT_DEFAULT = 300_000
 
@@ -1555,13 +1556,19 @@ const layer = Layer.effect(
           if (!stored) continue
           if (!plugin.auth.loader) continue
 
-          const options = yield* Effect.promise(() =>
-            plugin.auth!.loader!(
-              () => bridge.promise(auth.get(providerID).pipe(Effect.orDie)) as any,
-              toPublicInfo(database[plugin.auth!.provider]),
-            ),
+          const loaded = yield* Effect.tryPromise({
+            try: () =>
+              plugin.auth!.loader!(
+                () => bridge.promise(auth.get(providerID).pipe(Effect.orDie)) as any,
+                toPublicInfo(database[plugin.auth!.provider]),
+              ),
+            catch: errorMessage,
+          }).pipe(
+            Effect.tapError((error) => Effect.logError("plugin auth loader failed", { providerID, error })),
+            Effect.option,
           )
-          const opts = options ?? {}
+          if (loaded._tag === "None") continue
+          const opts = loaded.value ?? {}
           const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
           mergeProvider(providerID, patch)
         }

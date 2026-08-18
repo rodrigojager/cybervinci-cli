@@ -212,6 +212,30 @@ function writeFunctionOptionsPlugin(dir: string) {
   })
 }
 
+function writeThrowingAuthLoaderPlugin(dir: string) {
+  return Effect.gen(function* () {
+    const fs = yield* FSUtil.Service
+    yield* Effect.promise(() => markPluginDependenciesReady(path.join(dir, ".cybervinci")))
+
+    yield* fs.writeWithDirs(
+      path.join(dir, ".cybervinci", "plugin", "provider-loader-failure.ts"),
+      [
+        "export default {",
+        '  id: "test.provider-loader-failure",',
+        "  server: async () => ({",
+        "    auth: {",
+        '      provider: "google",',
+        '      loader: async () => { throw new Error("invalid plugin data") },',
+        "      methods: [{ type: 'api', label: 'API key' }],",
+        "    },",
+        "  }),",
+        "}",
+        "",
+      ].join("\n"),
+    )
+  })
+}
+
 function writeProviderModelsMutationPlugin(dir: string) {
   return Effect.gen(function* () {
     const fs = yield* FSUtil.Service
@@ -376,6 +400,28 @@ describe("provider HttpApi", () => {
       expect(hasNonZeroModelCost(configBody, "providers", "google")).toBe(true)
     }),
     { ...projectOptions, init: writeFunctionOptionsPlugin },
+  )
+
+  it.instance(
+    "keeps provider endpoints available when an auth loader fails",
+    Effect.gen(function* () {
+      const directory = (yield* TestInstance).directory
+      yield* setEnvScoped(
+        "CYBERVINCI_AUTH_CONTENT",
+        JSON.stringify({
+          google: { type: "oauth", refresh: "dummy", access: "dummy", expires: 9999999999999 },
+        }),
+      )
+      const headers = { "x-opencode-directory": directory }
+      const providerResponse = yield* request("/provider", { headers })
+      const configResponse = yield* request("/config/providers", { headers })
+
+      expect(providerResponse.status).toBe(200)
+      expect(configResponse.status).toBe(200)
+      expect(providerByID(yield* providerResponse.json, "all", "google")).toBeDefined()
+      expect(yield* configResponse.json).toBeDefined()
+    }),
+    { ...projectOptions, init: writeThrowingAuthLoaderPlugin },
   )
 
   it.instance(

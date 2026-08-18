@@ -4,7 +4,7 @@ import type { Plugin, PluginModule, PluginOptions } from "@cybervinci-ai/plugin"
 import { tool } from "@cybervinci-ai/plugin"
 import { SettingsStore } from "./config"
 import { AccountStore } from "./store"
-import { BindingStore, earliestAccount, selectAccount } from "./bindings"
+import { BindingStore, orderAccounts, rotateAccounts, selectAccount } from "./bindings"
 import { QuotaService, nearLimit, blockedUntil } from "./quota"
 import { LedgerStore } from "./ledger"
 import { HandoffStore, applyEpoch, handoffText } from "./handoff"
@@ -58,7 +58,10 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
         const affected = await bindings.affected(action.accountID)
         const snapshot = await accounts.snapshot()
         const source = snapshot.accounts.find((item) => item.id === action.accountID)
-        const replacement = selectAccount(snapshot.accounts.filter((item) => item.id !== action.accountID))
+        const replacement = selectAccount(
+          rotateAccounts(orderAccounts(snapshot.accounts, snapshot.order), action.accountID)
+            .filter((item) => item.id !== action.accountID),
+        )
         for (const binding of affected) {
           if (replacement) {
             const data = await ledger.get(binding.sessionID)
@@ -113,9 +116,13 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
     const fresh = (await accounts.snapshot()).accounts.find((item) => item.id === source.id) ?? source
     if (nearLimit(fresh, cfg.summarizer.finalSummaryThreshold, cfg.summarizer.finalSummaryThreshold)) await summaries.refresh(sessionID, cfg).catch(() => {})
     if (!nearLimit(fresh, cfg.rotation.proactivePrimaryPercent, cfg.rotation.proactiveSecondaryPercent)) return
-    const target = selectAccount((await accounts.snapshot()).accounts.filter((item) => item.id !== source.id))
+    const latest = await accounts.snapshot()
+    const target = selectAccount(
+      rotateAccounts(orderAccounts(latest.accounts, latest.order), source.id)
+        .filter((item) => item.id !== source.id)
+        .filter((item) => !nearLimit(item, cfg.rotation.proactivePrimaryPercent, cfg.rotation.proactiveSecondaryPercent)),
+    )
     if (!target) return
-    if (nearLimit(target, cfg.rotation.proactivePrimaryPercent, cfg.rotation.proactiveSecondaryPercent)) return
     if (!nearLimit(fresh, cfg.summarizer.finalSummaryThreshold, cfg.summarizer.finalSummaryThreshold)) await summaries.refresh(sessionID, cfg).catch(() => {})
     const result = await createHandoff(sessionID, fresh, target, "proactive_quota")
     if (result) await toast("Codex handoff preparado", `${fresh.label} -> ${target.label}`, "warning")
@@ -210,16 +217,34 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
     },
     tool: {
       codex_account_current: tool({ description: "Show the Codex account bound to the current session", args: {}, async execute(_, context) { const binding = await bindings.get(context.sessionID); const account = (await accounts.snapshot()).accounts.find((item) => item.id === binding?.accountID); return account ? JSON.stringify({ id: account.id, label: account.label, email: account.email, workspace: account.workspaceAccountID, quota: account.quota }, null, 2) : "Nenhuma conta vinculada." } }),
-      codex_accounts_list: tool({ description: "List Codex accounts without credentials", args: {}, async execute(_, context) { const binding = await bindings.get(context.sessionID); const snapshot = await accounts.snapshot(); return JSON.stringify(snapshot.accounts.map((item) => ({ id: item.id, label: item.label, email: item.email, workspace: item.workspaceAccountID, plan: item.planType, enabled: item.enabled, active: item.id === binding?.accountID, default: item.id === snapshot.defaultAccountID, quota: item.quota, health: item.health })), null, 2) } }),
-      codex_accounts_set_active: tool({ description: "Bind a Codex account to the current session", args: { id: tool.schema.string() }, async execute({ id }, context) { const account = (await accounts.snapshot()).accounts.find((item) => item.id === id && item.enabled); if (!account) return "Conta nao encontrada ou desabilitada."; const previous = await bindings.get(context.sessionID); const source = (await accounts.snapshot()).accounts.find((item) => item.id === previous?.accountID); await createHandoff(context.sessionID, source, account, "manual_switch"); await bindings.bind(context.sessionID, id, { pinnedByUser: true }); return "Conta vinculada a esta sessao." } }),
-      codex_accounts_set_default: tool({ description: "Set the default Codex account for new sessions", args: { id: tool.schema.string() }, async execute({ id }) { return await accounts.setDefault(id) ? "Conta default atualizada." : "Conta nao encontrada." } }),
+      codex_accounts_list: tool({ description: "List Codex accounts in priority order without credentials", args: {}, async execute(_, context) {
+        const binding = await bindings.get(context.sessionID)
+        const snapshot = await accounts.snapshot()
+        const ordered = orderAccounts(snapshot.accounts, snapshot.order)
+        return JSON.stringify(ordered.map((item, index) => ({
+          id: item.id,
+          label: item.label,
+          email: item.email,
+          workspace: item.workspaceAccountID,
+          plan: item.planType,
+          enabled: item.enabled,
+          active: item.id === binding?.accountID,
+          priority: index + 1,
+          primary: index === 0,
+          quota: item.quota,
+          health: item.health,
+        })), null, 2)
+      } }),
+      codex_accounts_set_active: tool({ description: "Bind a Codex account to the current session", args: { id: tool.schema.string() }, async execute({ id }, context) { const account = (await accounts.snapshot()).accounts.find((item) => item.id === id && item.enabled); if (!account) return "Conta não encontrada ou desabilitada."; const previous = await bindings.get(context.sessionID); const source = (await accounts.snapshot()).accounts.find((item) => item.id === previous?.accountID); await createHandoff(context.sessionID, source, account, "manual_switch"); await bindings.bind(context.sessionID, id, { pinnedByUser: true }); return "Conta vinculada a esta sessão." } }),
+      codex_accounts_set_default: tool({ description: "Set a Codex account as the primary priority", args: { id: tool.schema.string() }, async execute({ id }) { return await accounts.setDefault(id) ? "Conta definida como primária." : "Conta não encontrada." } }),
+      codex_accounts_set_priority: tool({ description: "Set the 1-based priority of a Codex account", args: { id: tool.schema.string(), priority: tool.schema.number() }, async execute({ id, priority }) { if (!Number.isInteger(priority) || priority < 1) return "A prioridade deve ser um número inteiro a partir de 1."; return await accounts.setPriority(id, priority - 1) ? `Conta movida para a prioridade ${priority}.` : "Conta não encontrada." } }),
       codex_accounts_enable: tool({ description: "Enable or disable a Codex account", args: { id: tool.schema.string(), enabled: tool.schema.boolean() }, async execute({ id, enabled }) { return await accounts.setEnabled(id, enabled) ? "Conta atualizada." : "Conta nao encontrada." } }),
       codex_accounts_rename: tool({ description: "Rename a Codex account", args: { id: tool.schema.string(), label: tool.schema.string() }, async execute({ id, label }) { return await accounts.renameAccount(id, label) ? "Conta renomeada." : "Conta nao encontrada." } }),
       codex_accounts_remove: tool({ description: "Remove a Codex account safely", args: { id: tool.schema.string() }, async execute({ id }, context) { await context.ask({ permission: "codex_accounts_remove", patterns: [id], always: [], metadata: {} }); const account = (await accounts.snapshot()).accounts.find((item) => item.id === id); if (!account) return "Conta nao encontrada."; await accounts.setEnabled(id, false); await actionStore.enqueueRemove(id); return "Conta desabilitada; remocao segura enfileirada apos requests ativos e handoffs." } }),
       codex_quota_refresh: tool({ description: "Refresh Codex quota for all accounts", args: {}, async execute() { const result = await quota.refreshAll(true); return `Quota atualizada: ${result.filter((item) => item.status === "fulfilled").length} sucesso(s), ${result.filter((item) => item.status === "rejected").length} falha(s).` } }),
       codex_handoff_note: tool({ description: "Persist an important decision, constraint, blocker, or reference for future handoffs", args: { category: tool.schema.enum(["decision", "constraint", "blocker", "reference"]), text: tool.schema.string(), replaceKey: tool.schema.string().optional() }, async execute(args, context) { await ledger.note(context.sessionID, args.category, args.text, args.replaceKey); return "Nota de handoff salva." } }),
       codex_handoff_status: tool({ description: "Show handoff, summary and waiting state for this session", args: {}, async execute(_, context) { return JSON.stringify({ binding: await bindings.get(context.sessionID), state: await handoff.state(context.sessionID), summary: await handoff.summary(context.sessionID) }, null, 2) } }),
-      codex_handoff_now: tool({ description: "Create a handoff to the best other Codex account now", args: {}, async execute(_, context) { const binding = await bindings.get(context.sessionID); const snapshot = await accounts.snapshot(); const source = snapshot.accounts.find((item) => item.id === binding?.accountID); const target = selectAccount(snapshot.accounts.filter((item) => item.id !== source?.id)); if (!target) return "Nenhuma conta alternativa disponivel."; await summaries.refresh(context.sessionID, await settings()).catch(() => {}); await createHandoff(context.sessionID, source, target, "manual_handoff"); return `Handoff preparado para ${target.label}.` } }),
+      codex_handoff_now: tool({ description: "Create a handoff to the next available Codex account in priority order", args: {}, async execute(_, context) { const binding = await bindings.get(context.sessionID); const snapshot = await accounts.snapshot(); const source = snapshot.accounts.find((item) => item.id === binding?.accountID); const target = selectAccount(rotateAccounts(orderAccounts(snapshot.accounts, snapshot.order), source?.id).filter((item) => item.id !== source?.id)); if (!target) return "Nenhuma conta alternativa disponível."; await summaries.refresh(context.sessionID, await settings()).catch(() => {}); await createHandoff(context.sessionID, source, target, "manual_handoff"); return `Handoff preparado para ${target.label}.` } }),
     },
     async event({ event }: any) {
       const properties = event.properties ?? {}
@@ -249,7 +274,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
       if (input.model) {
         const existing = await bindings.get(input.sessionID)
         const snapshot = await accounts.snapshot()
-        const selected = existing?.accountID || selectAccount(snapshot.accounts, snapshot.defaultAccountID)?.id
+        const selected = existing?.accountID || selectAccount(orderAccounts(snapshot.accounts, snapshot.order), snapshot.defaultAccountID)?.id
         if (selected) await bindings.bind(input.sessionID, selected, { agent: input.agent, model: { providerID: input.model.providerID, modelID: input.model.modelID, variant: input.variant } }).catch(() => {})
       }
     },
@@ -283,7 +308,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
       let binding = await bindings.get(input.sessionID)
       if (!binding) {
         const snapshot = await accounts.snapshot()
-        const selected = selectAccount(snapshot.accounts, snapshot.defaultAccountID)
+        const selected = selectAccount(orderAccounts(snapshot.accounts, snapshot.order), snapshot.defaultAccountID)
         if (selected) binding = await bindings.bind(input.sessionID, selected.id, { agent: input.agent, model: { providerID: input.model.providerID, modelID: input.model.id } })
       }
       if (binding) await bindings.bind(input.sessionID, binding.accountID, { agent: input.agent, model: { providerID: input.model.providerID, modelID: input.model.id, variant: binding.model?.variant } })

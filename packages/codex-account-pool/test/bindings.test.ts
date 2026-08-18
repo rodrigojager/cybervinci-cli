@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { BindingStore, earliestAccount, selectAccount } from "../src/bindings"
+import { BindingStore, earliestAccount, orderAccounts, rotateAccounts, selectAccount } from "../src/bindings"
 import type { Account } from "../src/domain"
 
 const roots: string[] = []
@@ -22,5 +22,14 @@ describe("session bindings", () => {
     const now = Date.now()
     expect(selectAccount([account("a", 10), account("b", 5)], "a")?.id).toBe("a")
     expect(earliestAccount([account("a", 100, now + 5000), account("b", 100, now + 1000)], now)?.account.id).toBe("b")
+  })
+
+  test("uses configured priority instead of quota headroom and continues after the current account", () => {
+    const accounts = [account("c", 1), account("a", 90), account("b", 10)]
+    const ordered = orderAccounts(accounts, ["a", "b", "c"])
+
+    expect(ordered.map((item) => item.id)).toEqual(["a", "b", "c"])
+    expect(selectAccount(ordered)?.id).toBe("a")
+    expect(rotateAccounts(ordered, "b").map((item) => item.id)).toEqual(["b", "c", "a"])
   })
 })
