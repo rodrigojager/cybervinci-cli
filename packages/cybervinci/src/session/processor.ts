@@ -187,6 +187,8 @@ const layer = Layer.effect(
       let aborted = false
       let cleanupError: unknown
       const deadlines = sessionDeadlinePolicy()
+      let providerActivityAt = Date.now()
+      let providerEventInFlight = false
       const toolCallLock = KeyedMutex.makeUnsafe<string>()
 
       const parse = (e: unknown) =>
@@ -199,6 +201,7 @@ const layer = Layer.effect(
         const call = ctx.toolcalls[toolCallID]
         if (call) ctx.settledToolcalls.add(toolCallID)
         delete ctx.toolcalls[toolCallID]
+        if (call) providerActivityAt = Date.now()
         if (call) yield* Deferred.succeed(call.done, undefined).pipe(Effect.ignore)
       })
 
@@ -853,27 +856,40 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            const provider = llm.stream(streamInput).pipe(
-              Stream.takeUntil(() => ctx.needsCompaction),
-              Stream.map((event) => ({ _tag: "ProviderEvent" as const, event })),
-            )
-            // AI SDK pauses the provider stream while it executes a local tool. Keep that
-            // interval out of the provider idle budget; the cycle ceiling still bounds it.
-            const localToolHeartbeat = Stream.tick(Math.max(1, Math.floor(deadlines.providerIdleMs / 4))).pipe(
-              Stream.filter(() => Object.values(ctx.toolcalls).some((call) => !call.providerExecuted)),
-              Stream.map(() => ({ _tag: "LocalToolHeartbeat" as const })),
-            )
-            yield* provider.pipe(
-              Stream.merge(localToolHeartbeat, { haltStrategy: "left" }),
-              Stream.timeoutOrElse({
-                duration: deadlines.providerIdleMs,
-                orElse: () => Stream.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs)),
-              }),
-              Stream.tap((activity) =>
-                activity._tag === "ProviderEvent" ? handleEvent(activity.event) : Effect.void,
+            providerActivityAt = Date.now()
+            const drain = llm.stream(streamInput).pipe(
+              Stream.tap((event) =>
+                Effect.sync(() => {
+                  providerEventInFlight = true
+                  providerActivityAt = Date.now()
+                }).pipe(
+                  Effect.andThen(handleEvent(event)),
+                  Effect.ensuring(
+                    Effect.sync(() => {
+                      providerEventInFlight = false
+                      providerActivityAt = Date.now()
+                    }),
+                  ),
+                ),
               ),
+              Stream.takeUntil(() => ctx.needsCompaction),
               Stream.runDrain,
             )
+            // AI SDK pauses its provider stream while executing a local tool. Observe
+            // that state out-of-band so provider events retain strict backpressure.
+            const watchdog = Effect.gen(function* () {
+              while (true) {
+                yield* Effect.sleep(Math.max(1, Math.floor(deadlines.providerIdleMs / 4)))
+                const localToolActive = Object.values(ctx.toolcalls).some((call) => !call.providerExecuted)
+                if (providerEventInFlight || localToolActive) {
+                  providerActivityAt = Date.now()
+                  continue
+                }
+                if (Date.now() - providerActivityAt < deadlines.providerIdleMs) continue
+                return yield* Effect.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs))
+              }
+            })
+            yield* drain.pipe(Effect.raceFirst(watchdog))
           }).pipe(
             Effect.catchCauseIf(
               (cause) => !Cause.hasInterruptsOnly(cause),
