@@ -127,6 +127,7 @@ type ToolCall = {
   messageID: SessionV1.ToolPart["messageID"]
   sessionID: SessionV1.ToolPart["sessionID"]
   done: Deferred.Deferred<void>
+  providerExecuted: boolean
   terminal?: ToolTerminal
   commitInFlight: boolean
 }
@@ -403,6 +404,7 @@ const layer = Layer.effect(
                 partID: part.id,
                 messageID: part.messageID,
                 sessionID: part.sessionID,
+                providerExecuted: true,
               }
               return { call: ctx.toolcalls[input.id], part }
             }
@@ -433,6 +435,7 @@ const layer = Layer.effect(
             ctx.toolcalls[input.id] = {
               done: yield* Deferred.make<void>(),
               commitInFlight: false,
+              providerExecuted: input.providerExecuted === true,
               partID: part.id,
               messageID: part.messageID,
               sessionID: part.sessionID,
@@ -850,13 +853,25 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            yield* llm.stream(streamInput).pipe(
-              Stream.tap((event) => handleEvent(event)),
+            const provider = llm.stream(streamInput).pipe(
               Stream.takeUntil(() => ctx.needsCompaction),
+              Stream.map((event) => ({ _tag: "ProviderEvent" as const, event })),
+            )
+            // AI SDK pauses the provider stream while it executes a local tool. Keep that
+            // interval out of the provider idle budget; the cycle ceiling still bounds it.
+            const localToolHeartbeat = Stream.tick(Math.max(1, Math.floor(deadlines.providerIdleMs / 4))).pipe(
+              Stream.filter(() => Object.values(ctx.toolcalls).some((call) => !call.providerExecuted)),
+              Stream.map(() => ({ _tag: "LocalToolHeartbeat" as const })),
+            )
+            yield* provider.pipe(
+              Stream.merge(localToolHeartbeat, { haltStrategy: "left" }),
               Stream.timeoutOrElse({
                 duration: deadlines.providerIdleMs,
                 orElse: () => Stream.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs)),
               }),
+              Stream.tap((activity) =>
+                activity._tag === "ProviderEvent" ? handleEvent(activity.event) : Effect.void,
+              ),
               Stream.runDrain,
             )
           }).pipe(

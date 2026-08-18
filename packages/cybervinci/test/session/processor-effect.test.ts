@@ -822,6 +822,86 @@ it.live("session.processor effect tests complete AI SDK tool calls when native f
   ),
 )
 
+it.live("session.processor effect tests exclude local tool execution from the provider idle deadline", () =>
+  provideTmpdirServer(
+    ({ dir, llm }) =>
+      Effect.gen(function* () {
+        const previous = process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
+        const started = defer<void>()
+        const release = defer<void>()
+        process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = "200"
+
+        return yield* Effect.gen(function* () {
+          const { processors, session, provider } = yield* boot()
+
+          yield* llm.tool("lookup", { query: "weather" })
+
+          const chat = yield* session.create({})
+          const parent = yield* user(chat.id, "slow tool")
+          const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+          const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+          const handle = yield* processors.create({
+            assistantMessage: msg,
+            sessionID: chat.id,
+            model: mdl,
+          })
+
+          const run = yield* handle
+            .process({
+              user: {
+                id: parent.id,
+                sessionID: chat.id,
+                role: "user",
+                time: parent.time,
+                agent: parent.agent,
+                model: { providerID: ref.providerID, modelID: ref.modelID },
+              } satisfies SessionV1.User,
+              sessionID: chat.id,
+              model: mdl,
+              agent: agent(),
+              system: [],
+              messages: [{ role: "user", content: "slow tool" }],
+              tools: {
+                lookup: tool({
+                  description: "Look up information slowly",
+                  inputSchema: z.object({ query: z.string() }),
+                  execute: async (input) => {
+                    started.resolve(undefined)
+                    await release.promise
+                    return {
+                      title: "Weather lookup",
+                      output: `result:${input.query}`,
+                      metadata: { source: "test" },
+                    }
+                  },
+                }),
+              },
+            })
+            .pipe(Effect.forkChild)
+
+          yield* Effect.promise(() => started.promise)
+          yield* Effect.sleep("500 millis")
+          release.resolve(undefined)
+
+          expect(yield* Fiber.join(run)).toBe("continue")
+          expect(handle.message.error).toBeUndefined()
+          expect((yield* MessageV2.parts(msg.id)).find((part) => part.type === "tool")?.state.status).toBe(
+            "completed",
+          )
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              release.resolve(undefined)
+              if (previous === undefined) delete process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
+              else process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = previous
+            }),
+          ),
+        )
+      }),
+    { config: (url) => providerCfg(url) },
+  ),
+)
+
 it.live("session.processor effect tests mark pending tools as aborted on cleanup", () =>
   provideTmpdirServer(
     ({ dir, llm }) =>
@@ -1103,6 +1183,60 @@ it.live("session.processor effect tests mark interruptions aborted without manua
         expect(state).toMatchObject({ type: "idle" })
       }),
     { config: (url) => providerCfg(url) },
+  ),
+)
+
+itNever.live("session.processor effect tests release a silent provider stream at the idle deadline", () =>
+  provideTmpdirInstance(
+    (dir) =>
+      Effect.gen(function* () {
+        const previous = process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
+        process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = "25"
+        return yield* Effect.gen(function* () {
+          const { processors, session, provider } = yield* boot()
+          const sts = yield* SessionStatus.Service
+          const chat = yield* session.create({})
+          const parent = yield* user(chat.id, "provider idle timeout")
+          const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+          const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+          const handle = yield* processors.create({
+            assistantMessage: msg,
+            sessionID: chat.id,
+            model: mdl,
+          })
+
+          const result = yield* handle.process({
+            user: {
+              id: parent.id,
+              sessionID: chat.id,
+              role: "user",
+              time: parent.time,
+              agent: parent.agent,
+              model: { providerID: ref.providerID, modelID: ref.modelID },
+            } satisfies SessionV1.User,
+            sessionID: chat.id,
+            model: mdl,
+            agent: agent(),
+            system: [],
+            messages: [{ role: "user", content: "provider idle timeout" }],
+            tools: {},
+          })
+
+          expect(result).toBe("stop")
+          expect(handle.message.error).toMatchObject({
+            data: { message: "CYBERVINCI session provider idle deadline exceeded after 25ms" },
+          })
+          expect(yield* sts.get(chat.id)).toMatchObject({ type: "idle" })
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (previous === undefined) delete process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
+              else process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = previous
+            }),
+          ),
+        )
+      }),
+    { config: cfg },
   ),
 )
 
