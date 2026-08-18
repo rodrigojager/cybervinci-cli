@@ -36,6 +36,8 @@ function normalize(text: string): string {
       [/\s+\[string\] \[default: "<HOME>"\]/g, ' [string] [default: "<HOME>"]'],
     ],
   })
+    .replace(/^([^\n]*\S)[\t ]{2,}(\[[^\n]+\])$/gm, "$1 $2")
+    .replace(/^[\t ]+(\[[^\n]+\])$/gm, "        $1")
 }
 
 // Top-level commands. Order matches what `cybervinci --help` prints today;

@@ -22,7 +22,7 @@ describe("cybervinci mcp add (non-interactive subprocess)", () => {
         cybervinci.expectExit(result, 0)
 
         const config = yield* Effect.promise(() =>
-          Bun.file(path.join(home, ".config", "opencode", "cybervinci.json")).json(),
+          Bun.file(path.join(home, ".config", "cybervinci", "cybervinci.json")).json(),
         )
         expect(config.mcp.github).toEqual({
           type: "remote",
@@ -58,7 +58,7 @@ describe("cybervinci mcp add (non-interactive subprocess)", () => {
         cybervinci.expectExit(result, 0)
 
         const config = yield* Effect.promise(() =>
-          Bun.file(path.join(home, ".config", "opencode", "cybervinci.json")).json(),
+          Bun.file(path.join(home, ".config", "cybervinci", "cybervinci.json")).json(),
         )
         expect(config.mcp.local).toEqual({
           type: "local",

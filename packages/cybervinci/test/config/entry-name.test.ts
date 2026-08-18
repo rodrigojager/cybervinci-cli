@@ -37,12 +37,12 @@ describe("configEntryNameFromPath", () => {
   // Regression for #25713: a username (or any parent segment) containing
   // `agent` or `agents` used to win the substring match before the real
   // `agents/` directory could match, leaking the entire intervening path into
-  // the agent key (e.g. `.config/opencode/agents/build`). Anchoring at the
+  // the agent key (e.g. `.config/cybervinci/agents/build`). Anchoring at the
   // caller via `path.relative(dir, item)` makes this impossible — the relative
   // path is always rooted at `agent/` or `agents/`.
   test("regression #25713: caller passes relative path; parent /agent/ segment is irrelevant", () => {
     const dir = "/home/agent/.config/cybervinci"
-    const item = "/home/agent/.config/opencode/agents/build.md"
+    const item = "/home/agent/.config/cybervinci/agents/build.md"
     const relative = posix.relative(dir, item)
     expect(relative).toBe("agents/build.md")
     expect(configEntryNameFromPath(relative, AGENT_PREFIXES)).toBe("build")
@@ -50,7 +50,7 @@ describe("configEntryNameFromPath", () => {
 
   test("regression #25713: parent /agents/ segment is irrelevant", () => {
     const dir = "/srv/agents/team/.config/cybervinci"
-    const item = "/srv/agents/team/.config/opencode/agents/build.md"
+    const item = "/srv/agents/team/.config/cybervinci/agents/build.md"
     const relative = posix.relative(dir, item)
     expect(configEntryNameFromPath(relative, AGENT_PREFIXES)).toBe("build")
   })

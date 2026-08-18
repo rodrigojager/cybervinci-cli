@@ -87,8 +87,10 @@ jobs:
         settings:
           - name: linux
             host: ubuntu-24.04
+            workers: 5
           - name: windows
             host: windows-2025
+            workers: 2
     runs-on: ${{ matrix.settings.host }}
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
@@ -137,7 +139,8 @@ jobs:
         run: bun --cwd packages/app test:e2e:local
         env:
           CI: true
-        timeout-minutes: 30
+          PLAYWRIGHT_WORKERS: ${{ matrix.settings.workers }}
+        timeout-minutes: 45
 
       - name: Upload Playwright artifacts
         if: always()

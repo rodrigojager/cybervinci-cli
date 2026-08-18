@@ -62,8 +62,9 @@ describe("HttpApi CORS", () => {
 
   it.live("adds CORS headers to unauthorized responses", () =>
     Effect.gen(function* () {
+      const origin = "https://ui.cybervinci.invalid"
       const handler = HttpRouter.toWebHandler(
-        HttpApiApp.createRoutes().pipe(
+        HttpApiApp.createRoutes({ cors: [origin] }).pipe(
           Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown({ CYBERVINCI_SERVER_PASSWORD: "secret" }))),
         ),
         { disableLogger: true },
@@ -71,14 +72,14 @@ describe("HttpApi CORS", () => {
       const response = yield* Effect.promise(() =>
         handler(
           new Request(new URL("/global/config", "http://localhost"), {
-            headers: { origin: "https://ui.cybervinci.invalid" },
+            headers: { origin },
           }),
           HttpApiApp.context,
         ),
       )
 
       expect(response.status).toBe(401)
-      expect(response.headers.get("access-control-allow-origin")).toBe("https://ui.cybervinci.invalid")
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin)
     }),
   )
 
