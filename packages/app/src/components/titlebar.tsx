@@ -55,7 +55,7 @@ export type TitlebarUpdate = {
 export function useTitlebarRightMount() {
   const language = useLanguage()
   const [mount, setMount] = createSignal<HTMLElement | null>(null)
-  const sync = () => setMount(document.getElementById("opencode-titlebar-right"))
+  const sync = () => setMount(document.getElementById("cybervinci-titlebar-right"))
   onMount(sync)
   createEffect(on(language.direction, sync, { defer: true }))
   return mount
@@ -559,7 +559,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                         </Tooltip>
                       </div>
                     </Show>
-                    <div id="opencode-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
+                    <div id="cybervinci-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
                   </div>
                 </div>
                 <ChannelIndicator debugTools={props.debugTools} />

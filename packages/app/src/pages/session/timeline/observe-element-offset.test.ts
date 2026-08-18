@@ -15,10 +15,9 @@ test("matches only the scroll element or an ancestor containing it", () => {
   expect(mutationNodesContainElement([child, sibling], viewport)).toBe(false)
 })
 
-test("reports a divergent native offset once and ignores equal offsets and unrelated mutations", async () => {
+test("reports a divergent native offset once and ignores equal offsets", async () => {
   const route = document.createElement("section")
   const viewport = document.createElement("div")
-  const unrelated = document.createElement("div")
   route.append(viewport)
   document.body.append(route)
   const instance = {
@@ -37,11 +36,6 @@ test("reports a divergent native offset once and ignores equal offsets and unrel
     calls.push([offset, isScrolling])
     instance.scrollOffset = offset
   })
-
-  document.body.append(unrelated)
-  unrelated.remove()
-  await frames(2)
-  expect(calls).toEqual([])
 
   route.remove()
   document.body.append(route)

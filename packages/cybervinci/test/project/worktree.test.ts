@@ -88,7 +88,7 @@ describe("Worktree", () => {
 
           expect(info.name).toBeDefined()
           expect(typeof info.name).toBe("string")
-          expect(info.branch).toBe(`opencode/${info.name}`)
+          expect(info.branch).toBe(`cybervinci/${info.name}`)
           expect(info.directory).toContain(info.name)
         }),
       { git: true },
