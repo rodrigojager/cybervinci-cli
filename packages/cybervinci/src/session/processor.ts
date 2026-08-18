@@ -359,7 +359,9 @@ const layer = Layer.effect(
         toolCallID: string,
         output: ToolOutput,
       ) {
-        yield* commitTerminal(toolCallID, { _tag: "Completed", output })
+        // Tool execution runs in a bridge fiber. During cancellation it may
+        // finish normal output cleanup just after the stream fiber closes.
+        yield* commitTerminal(toolCallID, { _tag: "Completed", output }, { allowClaimWhenClosed: true })
       })
 
       const failToolCall = Effect.fn("SessionProcessor.failToolCall")(function* (
