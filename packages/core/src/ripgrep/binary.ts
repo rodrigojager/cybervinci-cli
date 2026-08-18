@@ -59,8 +59,10 @@ export namespace RipgrepBinary {
 
         if (config.extension === "zip") {
           // Windows ships bsdtar, which extracts zip archives much faster than
-          // PowerShell's Expand-Archive on loaded machines and CI runners.
-          const tar = yield* Effect.sync(() => which("tar.exe") ?? which("tar"))
+          // PowerShell's Expand-Archive on loaded machines and CI runners. Use
+          // its absolute path so Git Bash's GNU tar cannot intercept C: paths.
+          const systemTar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe")
+          const tar = (yield* fs.isFile(systemTar)) ? systemTar : undefined
           const result = tar
             ? yield* run(tar, ["-xf", archive, "-C", dir])
             : yield* run((yield* Effect.sync(() => which("powershell.exe") ?? which("pwsh.exe"))) ?? "powershell.exe", [
