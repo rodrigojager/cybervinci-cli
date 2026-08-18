@@ -64,7 +64,7 @@ async function switchSession(page: Page, title: string) {
 }
 
 async function setup(page: Page) {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     protocol: "v1",
     directory,
     project: {

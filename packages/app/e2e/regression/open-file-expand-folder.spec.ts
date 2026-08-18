@@ -1,6 +1,6 @@
 import { base64Encode } from "@cybervinci-ai/core/util/encode"
 import { expect, test } from "@playwright/test"
-import { mockOpenCodeServer } from "../utils/mock-server"
+import { mockCYBERVINCIServer } from "../utils/mock-server"
 import { expectSessionTitle } from "../utils/waits"
 
 const directory = "C:/CyberVinci/OpenFileExpand"
@@ -12,7 +12,7 @@ const server = `http://${process.env.PLAYWRIGHT_SERVER_HOST ?? "127.0.0.1"}:${pr
 test.use({ viewport: { width: 1440, height: 900 } })
 
 test("expands a folder whose path has a trailing Windows separator", async ({ page }) => {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     directory,
     project: {
       id: projectID,

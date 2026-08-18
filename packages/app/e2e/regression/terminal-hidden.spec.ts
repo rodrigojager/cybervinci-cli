@@ -9,7 +9,7 @@ const title = "Hidden terminal regression"
 
 test("unmounts the terminal panel while it is hidden", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 })
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     protocol: "v2",
     directory,
     project: {

@@ -1,6 +1,6 @@
 import { base64Encode } from "@cybervinci-ai/core/util/encode"
 import { expect, test, type Page } from "@playwright/test"
-import { mockOpenCodeServer } from "../utils/mock-server"
+import { mockCYBERVINCIServer } from "../utils/mock-server"
 import { expectSessionTitle } from "../utils/waits"
 
 const directory = "C:/CyberVinci/FileBrowserSidebar"
@@ -75,7 +75,7 @@ async function readProbe(page: Page) {
 }
 
 async function setup(page: Page) {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     directory,
     project: {
       id: projectID,

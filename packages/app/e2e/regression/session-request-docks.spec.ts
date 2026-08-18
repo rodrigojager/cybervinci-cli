@@ -1,6 +1,6 @@
 import { base64Encode } from "@cybervinci-ai/core/util/encode"
 import { expect, test, type Page } from "@playwright/test"
-import { mockOpenCodeServer } from "../utils/mock-server"
+import { mockCYBERVINCIServer } from "../utils/mock-server"
 import { installSseTransport } from "../utils/sse-transport"
 import { expectSessionTitle } from "../utils/waits"
 
@@ -172,7 +172,7 @@ async function mockServer(
     questions?: unknown[] | (() => unknown[])
   },
 ) {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     protocol: "v2",
     directory,
     project: {

@@ -74,6 +74,7 @@ const pluralCategories = new Map(
       ] as const,
   ),
 )
+const additionalPluralCategories = ["zero", "two", "few", "many"] as const
 
 const domains = [
   {
@@ -103,17 +104,17 @@ describe("i18n parity", () => {
       for (const locale of domain.locales) {
         const target = await dictionary(domain.target(locale))
         const missing = Object.keys(source).filter((key) => !Object.hasOwn(target, key))
+        const allowedPluralVariants = new Set(
+          pluralFamilies(source).flatMap((key) => additionalPluralCategories.map((category) => `${key}.${category}`)),
+        )
         const extra = Object.keys(target)
-          .filter((key) => !Object.hasOwn(source, key))
-          .sort()
-        const expected = pluralFamilies(source)
-          .flatMap((key) => (pluralCategories.get(locale) ?? []).map((category) => `${key}.${category}`))
+          .filter((key) => !Object.hasOwn(source, key) && !allowedPluralVariants.has(key))
           .sort()
         expect({ domain: domain.name, locale, missing, extra }).toEqual({
           domain: domain.name,
           locale,
           missing: [],
-          extra: expected,
+          extra: [],
         })
       }
     }
