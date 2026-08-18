@@ -167,6 +167,7 @@ const RECORDED_SCENARIOS = [
     protocol: "openai-responses",
     tags: ["opencode", "zen", "native", "tool-loop"],
     canRecord: () => Boolean(process.env.OPENCODE_RECORD_CONSOLE_TOKEN && process.env.OPENCODE_RECORD_ZEN_ORG_ID),
+    stableID: "cybervinci",
     config: (model) =>
       providerConfig({
         providerID: ProviderV2.ID.opencode,

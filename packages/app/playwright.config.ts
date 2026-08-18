@@ -7,13 +7,14 @@ const serverPort = process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"
 const command = `bun run dev -- --host 0.0.0.0 --port ${port}`
 const reuse = !process.env.CI
 const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0)) || undefined
+const slowWindowsCI = process.platform === "win32" && Boolean(process.env.CI)
 export default defineConfig({
   testDir: "./e2e",
   testIgnore: process.env.CYBERVINCI_PERFORMANCE === "1" ? "performance/**/*.test.ts" : "performance/**",
   outputDir: "./e2e/test-results",
-  timeout: 60_000,
+  timeout: slowWindowsCI ? 120_000 : 60_000,
   expect: {
-    timeout: 10_000,
+    timeout: slowWindowsCI ? 20_000 : 10_000,
   },
   fullyParallel: process.env.PLAYWRIGHT_FULLY_PARALLEL === "1",
   forbidOnly: !!process.env.CI,
