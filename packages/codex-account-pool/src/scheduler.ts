@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import { jobsFileSchema, type ResumeJob, type Settings } from "./domain"
 import { paths, readJson, transact } from "./storage"
 import { AccountStore } from "./store"
-import { BindingStore, earliestAccount } from "./bindings"
+import { BindingStore, earliestAccount, orderAccounts } from "./bindings"
 import { QuotaService, blockedUntil } from "./quota"
 import { LedgerStore } from "./ledger"
 
@@ -146,14 +146,15 @@ export class ResumeScheduler {
       await this.client.session.get({ path: { id: job.sessionID }, query: { directory: this.directory } })
       const snapshot = await this.accounts.snapshot()
       let target = snapshot.accounts.find((item) => item.id === job.targetAccountID && item.enabled)
-      if (!target) target = earliestAccount(snapshot.accounts)?.account
+      if (!target) target = earliestAccount(orderAccounts(snapshot.accounts, snapshot.order))?.account
       if (!target) { await this.jobs.finish(job.id, "failed", { lastError: "No enabled account" }); return }
       if (target.id !== job.targetAccountID) { await this.jobs.finish(job.id, "waiting", { targetAccountID: target.id, resumeAt: Math.max(Date.now(), blockedUntil(target)), attempts: job.attempts + 1 }); return }
       await this.quota.refresh(target, true).catch(() => undefined)
       const refreshed = (await this.accounts.snapshot()).accounts.find((item) => item.id === target!.id) ?? target
       const available = blockedUntil(refreshed)
       if (available > Date.now()) {
-        const earliest = earliestAccount((await this.accounts.snapshot()).accounts)
+        const latest = await this.accounts.snapshot()
+        const earliest = earliestAccount(orderAccounts(latest.accounts, latest.order))
         await this.jobs.finish(job.id, "waiting", { resumeAt: earliest?.at ?? available, targetAccountID: earliest?.account.id ?? refreshed.id, attempts: job.attempts + 1 })
         return
       }

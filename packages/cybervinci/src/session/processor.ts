@@ -127,6 +127,7 @@ type ToolCall = {
   messageID: SessionV1.ToolPart["messageID"]
   sessionID: SessionV1.ToolPart["sessionID"]
   done: Deferred.Deferred<void>
+  providerExecuted: boolean
   terminal?: ToolTerminal
   commitInFlight: boolean
 }
@@ -186,6 +187,8 @@ const layer = Layer.effect(
       let aborted = false
       let cleanupError: unknown
       const deadlines = sessionDeadlinePolicy()
+      let providerActivityAt = Date.now()
+      let providerEventInFlight = false
       const toolCallLock = KeyedMutex.makeUnsafe<string>()
 
       const parse = (e: unknown) =>
@@ -198,6 +201,7 @@ const layer = Layer.effect(
         const call = ctx.toolcalls[toolCallID]
         if (call) ctx.settledToolcalls.add(toolCallID)
         delete ctx.toolcalls[toolCallID]
+        if (call) providerActivityAt = Date.now()
         if (call) yield* Deferred.succeed(call.done, undefined).pipe(Effect.ignore)
       })
 
@@ -403,6 +407,7 @@ const layer = Layer.effect(
                 partID: part.id,
                 messageID: part.messageID,
                 sessionID: part.sessionID,
+                providerExecuted: true,
               }
               return { call: ctx.toolcalls[input.id], part }
             }
@@ -433,6 +438,7 @@ const layer = Layer.effect(
             ctx.toolcalls[input.id] = {
               done: yield* Deferred.make<void>(),
               commitInFlight: false,
+              providerExecuted: input.providerExecuted === true,
               partID: part.id,
               messageID: part.messageID,
               sessionID: part.sessionID,
@@ -850,15 +856,40 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            yield* llm.stream(streamInput).pipe(
-              Stream.tap((event) => handleEvent(event)),
+            providerActivityAt = Date.now()
+            const drain = llm.stream(streamInput).pipe(
+              Stream.tap((event) =>
+                Effect.sync(() => {
+                  providerEventInFlight = true
+                  providerActivityAt = Date.now()
+                }).pipe(
+                  Effect.andThen(handleEvent(event)),
+                  Effect.ensuring(
+                    Effect.sync(() => {
+                      providerEventInFlight = false
+                      providerActivityAt = Date.now()
+                    }),
+                  ),
+                ),
+              ),
               Stream.takeUntil(() => ctx.needsCompaction),
-              Stream.timeoutOrElse({
-                duration: deadlines.providerIdleMs,
-                orElse: () => Stream.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs)),
-              }),
               Stream.runDrain,
             )
+            // AI SDK pauses its provider stream while executing a local tool. Observe
+            // that state out-of-band so provider events retain strict backpressure.
+            const watchdog = Effect.gen(function* () {
+              while (true) {
+                yield* Effect.sleep(Math.max(1, Math.floor(deadlines.providerIdleMs / 4)))
+                const localToolActive = Object.values(ctx.toolcalls).some((call) => !call.providerExecuted)
+                if (providerEventInFlight || localToolActive) {
+                  providerActivityAt = Date.now()
+                  continue
+                }
+                if (Date.now() - providerActivityAt < deadlines.providerIdleMs) continue
+                return yield* Effect.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs))
+              }
+            })
+            yield* drain.pipe(Effect.raceFirst(watchdog))
           }).pipe(
             Effect.catchCauseIf(
               (cause) => !Cause.hasInterruptsOnly(cause),

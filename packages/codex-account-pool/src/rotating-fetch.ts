@@ -1,6 +1,6 @@
 import type { Account, Settings } from "./domain"
 import { AccountStore } from "./store"
-import { BindingStore, earliestAccount, selectAccount } from "./bindings"
+import { BindingStore, earliestAccount, orderAccounts, rotateAccounts, selectAccount } from "./bindings"
 import { blockedUntil, parseQuotaPayload, QuotaService } from "./quota"
 import { DEFAULT_CODEX_ENDPOINT, DEFAULT_ISSUER, refreshTokens, tokenIdentity } from "./oauth"
 import { FileLock } from "./storage"
@@ -120,10 +120,11 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
     const binding = sid ? await bindings.get(sid) : undefined
     const preferred = binding?.accountID ?? snapshot.defaultAccountID
     const now = Date.now()
-    const first = selectAccount(snapshot.accounts, preferred, now)
+    const priority = rotateAccounts(orderAccounts(snapshot.accounts, snapshot.order), preferred)
+    const first = selectAccount(priority, preferred, now)
     if (!first) {
-      const enabled = snapshot.accounts.filter((item) => item.enabled)
-      const earliest = earliestAccount(snapshot.accounts, now)
+      const enabled = priority.filter((item) => item.enabled)
+      const earliest = earliestAccount(priority, now)
       const quotaExhausted = enabled.length > 0 && enabled.every((item) => blockedUntil(item, now) > now)
       if (quotaExhausted) {
         await options.onAllExhausted?.(sid, earliest?.account, earliest?.at)
@@ -131,7 +132,7 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
       }
       throw new NoAccountsAvailableError(earliest?.account, earliest?.at)
     }
-    const ordered = [first, ...snapshot.accounts.filter((item) => item.enabled && item.id !== first.id)]
+    const ordered = priority
       .filter((item) => blockedUntil(item, now) <= now && (item.health.cooldownUntil ?? 0) <= now)
     const attempts = replayable(originalInput, originalInit) ? Math.min(settings.rotation.maxAttempts, ordered.length) : 1
     let input = originalInput
@@ -187,7 +188,7 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
           await release()
           if (response.status === 429) {
             const fresh = await store.snapshot()
-            const earliest = earliestAccount(fresh.accounts)
+            const earliest = earliestAccount(orderAccounts(fresh.accounts, fresh.order))
             await options.onAllExhausted?.(sid, earliest?.account, earliest?.at)
           }
           return response
