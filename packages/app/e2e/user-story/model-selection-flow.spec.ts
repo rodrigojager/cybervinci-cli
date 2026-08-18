@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { mockOpenCodeServer } from "../utils/mock-server"
+import { mockCYBERVINCIServer } from "../utils/mock-server"
 import { expectAppVisible } from "../utils/waits"
 
 const directory = "C:/CyberVinci/NewProject"
@@ -9,7 +9,7 @@ test("creates a session in a new project, connects OpenCode Go, and selects its 
   let pendingGo = false
   const connections: Array<{ integrationID: string; body: unknown }> = []
 
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     directory,
     project: {
       id: "proj_model_selection_flow",

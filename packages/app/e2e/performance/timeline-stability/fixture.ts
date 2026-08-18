@@ -114,7 +114,7 @@ export async function setupTimeline(
     server: `http://${process.env.PLAYWRIGHT_SERVER_HOST ?? "127.0.0.1"}:${process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"}`,
     retry: input.eventRetry ?? 20,
   })
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     protocol: input.protocol,
     directory,
     project: project(),

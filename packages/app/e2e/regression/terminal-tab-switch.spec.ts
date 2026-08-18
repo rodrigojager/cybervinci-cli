@@ -65,7 +65,7 @@ async function readProbe(page: Page) {
 }
 
 async function setup(page: Page) {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     protocol: "v2",
     directory,
     project: {

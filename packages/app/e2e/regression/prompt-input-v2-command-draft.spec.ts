@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { base64Encode } from "@cybervinci-ai/core/util/encode"
-import { mockOpenCodeServer } from "../utils/mock-server"
+import { mockCYBERVINCIServer } from "../utils/mock-server"
 import { expectAppVisible } from "../utils/waits"
 
 const directory = "C:/CyberVinci/PromptInputV2Editing"
@@ -8,7 +8,7 @@ const projectID = "proj_prompt_input_v2_editing"
 const sessionID = "ses_prompt_input_v2_editing"
 
 test("preserves the draft when a populated command menu triggers a built-in", async ({ page }) => {
-  await mockOpenCodeServer(page, {
+  await mockCYBERVINCIServer(page, {
     directory,
     project: {
       id: projectID,

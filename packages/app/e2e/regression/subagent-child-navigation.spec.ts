@@ -1,6 +1,6 @@
 import { base64Encode } from "@cybervinci-ai/core/util/encode"
 import { expect, test, type Page } from "@playwright/test"
-import { currentSession, mockOpenCodeServer } from "../utils/mock-server"
+import { currentSession, mockCYBERVINCIServer } from "../utils/mock-server"
 import { expectSessionTitle } from "../utils/waits"
 
 const directory = "C:/CYBERVINCI/SubagentNavigation"
@@ -191,7 +191,10 @@ async function configurePage(page: Page) {
           lastProject: { local: directory },
         }),
       )
-      localStorage.setItem("cybervinci.window.browser.dat:tabs", JSON.stringify([{ type: "session", server, sessionId }]))
+      localStorage.setItem(
+        "cybervinci.window.browser.dat:tabs",
+        JSON.stringify([{ type: "session", server, sessionId }]),
+      )
     },
     { directory, server, sessionId: parentID },
   )
