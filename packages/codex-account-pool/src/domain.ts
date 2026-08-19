@@ -21,12 +21,16 @@ export const settingsSchema = z.object({
     maxDeltaTokens: z.number().int().min(500).default(8000),
     maxSummaryTokens: z.number().int().min(250).default(3000),
     timeoutMs: z.number().int().min(1000).default(60000),
+    rateLimitCooldownMs: z.number().int().min(1000).default(300000),
+    failureCooldownMs: z.number().int().min(1000).default(60000),
+    queueWaitTimeoutMs: z.number().int().min(100).default(5000),
+    queueLeaseMs: z.number().int().min(10000).default(180000),
     finalSummaryThreshold: z.number().min(1).max(100).default(90),
     retainLastTurns: z.number().int().min(0).max(10).default(1),
     fallbackOn: z.array(z.enum([
       "provider_unavailable", "model_not_found", "auth", "rate_limit", "timeout", "server_error", "invalid_output",
     ])).default(["provider_unavailable", "model_not_found", "auth", "rate_limit", "timeout", "server_error", "invalid_output"]),
-  }).default({ enabled: false, everyTurns: 4, maxDeltaTokens: 8000, maxSummaryTokens: 3000, timeoutMs: 60000, finalSummaryThreshold: 90, retainLastTurns: 1, fallbackOn: ["provider_unavailable", "model_not_found", "auth", "rate_limit", "timeout", "server_error", "invalid_output"] }),
+  }).default({ enabled: false, everyTurns: 4, maxDeltaTokens: 8000, maxSummaryTokens: 3000, timeoutMs: 60000, rateLimitCooldownMs: 300000, failureCooldownMs: 60000, queueWaitTimeoutMs: 5000, queueLeaseMs: 180000, finalSummaryThreshold: 90, retainLastTurns: 1, fallbackOn: ["provider_unavailable", "model_not_found", "auth", "rate_limit", "timeout", "server_error", "invalid_output"] }),
   rotation: z.object({
     strategy: z.literal("sticky").default("sticky"),
     proactivePrimaryPercent: z.number().min(1).max(100).default(90),
@@ -150,6 +154,41 @@ export const structuredSummarySchema = z.object({
 export type StructuredSummary = z.infer<typeof structuredSummarySchema>
 
 export type FailureCategory = Settings["summarizer"]["fallbackOn"][number]
+
+export const summaryPrioritySchema = z.enum(["routine", "quota", "emergency"])
+export type SummaryPriority = z.infer<typeof summaryPrioritySchema>
+
+export const summaryJobSchema = z.object({
+  id: z.string(),
+  sessionID: z.string(),
+  state: z.enum(["waiting", "claimed"]),
+  priority: summaryPrioritySchema,
+  force: z.boolean(),
+  dirty: z.boolean(),
+  nextAttemptAt: z.number(),
+  owner: z.object({ instanceID: z.string(), pid: z.number(), hostname: z.string(), leaseUntil: z.number() }).optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  lastError: z.string().optional(),
+})
+export type SummaryJob = z.infer<typeof summaryJobSchema>
+
+export const summaryCircuitSchema = z.object({
+  key: z.string(),
+  blockedUntil: z.number(),
+  category: z.string(),
+  failures: z.number().int().nonnegative(),
+  updatedAt: z.number(),
+  lastError: z.string().optional(),
+})
+export type SummaryCircuit = z.infer<typeof summaryCircuitSchema>
+
+export const summaryQueueFileSchema = z.object({
+  version: z.literal(1),
+  revision: z.number().int().nonnegative(),
+  jobs: z.array(summaryJobSchema),
+  circuits: z.record(z.string(), summaryCircuitSchema),
+})
 
 export const ledgerSchema = z.object({
   version: z.literal(1),

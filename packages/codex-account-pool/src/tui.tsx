@@ -78,25 +78,42 @@ const tui: TuiPlugin = async (api) => {
   async function settingsDialog() {
     const current = await settingsStore.get(true)
     const draft = structuredClone(current)
-    pickProfile("Primary summarizer", draft.summarizer.primary, (primary) => {
-      draft.summarizer.primary = primary
-      select("Configure optional fallback?", [
-        { title: "No fallback", value: false },
-        { title: "Configure fallback", value: true },
-      ], (withFallback) => {
-        const finish = () => configureSummaryNumbers(draft, () => reviewSettings(draft))
-        if (!withFallback) { draft.summarizer.fallback = undefined; finish(); return }
-        pickProfile("Fallback summarizer", draft.summarizer.fallback, (fallback) => { draft.summarizer.fallback = fallback; finish() })
+    select("Configure handoff summarizer", [
+      { title: "Disabled (no models)", description: "The account pool works without handoff models", value: "disabled" },
+      { title: "Configure primary model", description: "The fallback remains optional", value: "configure" },
+    ], async (choice) => {
+      if (choice === "disabled") {
+        draft.summarizer.enabled = false
+        draft.summarizer.primary = undefined
+        draft.summarizer.fallback = undefined
+        await settingsStore.save(draft)
+        api.ui.toast({ title: "Handoff summarizer", message: "Disabled. Account rotation remains active.", variant: "success" })
+        dialog.clear()
+        return
+      }
+      pickProfile("Primary summarizer", draft.summarizer.primary, (primary) => {
+        draft.summarizer.primary = primary
+        select("Configure optional fallback?", [
+          { title: "No fallback", value: false },
+          { title: "Configure fallback", value: true },
+        ], (withFallback) => {
+          const finish = () => configureSummaryNumbers(draft, () => reviewSettings(draft))
+          if (!withFallback) { draft.summarizer.fallback = undefined; finish(); return }
+          pickProfile("Fallback summarizer", draft.summarizer.fallback, (fallback) => { draft.summarizer.fallback = fallback; finish() })
+        })
       })
     })
   }
 
   function configureSummaryNumbers(draft: Settings, done: () => void) {
-    const fields: Array<{ title: string; key: "everyTurns" | "maxDeltaTokens" | "maxSummaryTokens" | "timeoutMs" | "finalSummaryThreshold"; min: number }> = [
+    const fields: Array<{ title: string; key: "everyTurns" | "maxDeltaTokens" | "maxSummaryTokens" | "timeoutMs" | "rateLimitCooldownMs" | "failureCooldownMs" | "queueWaitTimeoutMs" | "finalSummaryThreshold"; min: number }> = [
       { title: "Update every N completed turns", key: "everyTurns", min: 1 },
       { title: "Maximum new input tokens per summary", key: "maxDeltaTokens", min: 500 },
       { title: "Maximum final summary tokens", key: "maxSummaryTokens", min: 250 },
       { title: "Summarizer timeout in milliseconds", key: "timeoutMs", min: 1000 },
+      { title: "Rate limit cooldown in milliseconds", key: "rateLimitCooldownMs", min: 1000 },
+      { title: "Other failure cooldown in milliseconds", key: "failureCooldownMs", min: 1000 },
+      { title: "Maximum synchronous queue wait in milliseconds", key: "queueWaitTimeoutMs", min: 100 },
       { title: "Final summary quota threshold (%)", key: "finalSummaryThreshold", min: 1 },
     ]
     const next = (index: number) => {

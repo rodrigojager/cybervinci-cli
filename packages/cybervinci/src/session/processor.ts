@@ -898,6 +898,10 @@ const layer = Layer.effect(
             Effect.retry(
               SessionRetry.policy({
                 provider: input.model.providerID,
+                // The handoff coordinator owns model fallback and persistent
+                // cooldowns. Retrying here would delay fallback and amplify a
+                // free-tier rate limit across every active session.
+                maxRetries: streamInput.agent.name === "handoff-summarizer" ? 0 : undefined,
                 parse,
                 set: (info) => {
                   return status.set(ctx.sessionID, {

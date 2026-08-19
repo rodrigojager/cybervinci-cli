@@ -25,6 +25,7 @@ export const paths = {
     join(dataHome, "opencode", "codex-account-pool.json"),
   bindings: join(dataRoot(), "bindings.json"),
   jobs: join(dataRoot(), "scheduler", "jobs.json"),
+  summaryQueue: join(dataRoot(), "scheduler", "summary-queue.json"),
   actions: join(dataRoot(), "actions.json"),
   session(sessionID: string) {
     if (!/^[a-zA-Z0-9_-]+$/.test(sessionID)) throw new Error("Invalid session ID")

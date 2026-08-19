@@ -39,7 +39,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
   const quota = new QuotaService(accounts)
   const ledger = new LedgerStore()
   const handoff = new HandoffStore()
-  const summaries = new SummaryCoordinator(ctx.client, ctx.directory, ledger, handoff)
+  const summaries = new SummaryCoordinator(ctx.client, ctx.directory, () => settingsStore.get(true), ledger, handoff)
   const scheduler = new ResumeScheduler(ctx.client, ctx.directory, () => settingsStore.get(true), undefined, accounts, bindings, quota, ledger)
   const lastNotified = new Map<string, string>()
   const actionStore = new AccountActionStore()
@@ -76,6 +76,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
   }, 500)
   actionTimer.unref?.()
   scheduler.start()
+  summaries.start()
 
   async function settings(): Promise<Settings> {
     const current = await settingsStore.get()
@@ -114,7 +115,8 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
     if (!source?.enabled) return
     await quota.refresh(source).catch(() => undefined)
     const fresh = (await accounts.snapshot()).accounts.find((item) => item.id === source.id) ?? source
-    if (nearLimit(fresh, cfg.summarizer.finalSummaryThreshold, cfg.summarizer.finalSummaryThreshold)) await summaries.refresh(sessionID, cfg).catch(() => {})
+    if (nearLimit(fresh, cfg.summarizer.finalSummaryThreshold, cfg.summarizer.finalSummaryThreshold))
+      await summaries.refresh(sessionID, "quota").catch(() => false)
     if (!nearLimit(fresh, cfg.rotation.proactivePrimaryPercent, cfg.rotation.proactiveSecondaryPercent)) return
     const latest = await accounts.snapshot()
     const target = selectAccount(
@@ -123,7 +125,8 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
         .filter((item) => !nearLimit(item, cfg.rotation.proactivePrimaryPercent, cfg.rotation.proactiveSecondaryPercent)),
     )
     if (!target) return
-    if (!nearLimit(fresh, cfg.summarizer.finalSummaryThreshold, cfg.summarizer.finalSummaryThreshold)) await summaries.refresh(sessionID, cfg).catch(() => {})
+    if (!nearLimit(fresh, cfg.summarizer.finalSummaryThreshold, cfg.summarizer.finalSummaryThreshold))
+      await summaries.refresh(sessionID, "quota").catch(() => false)
     const result = await createHandoff(sessionID, fresh, target, "proactive_quota")
     if (result) await toast("Codex handoff preparado", `${fresh.label} -> ${target.label}`, "warning")
   }
@@ -133,6 +136,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
     const binding = await bindings.get(sessionID)
     const data = await ledger.get(sessionID)
     if (!binding?.model || !binding.agent || !data.goal || data.goal.status !== "active") return
+    await summaries.refresh(sessionID, "emergency").catch(() => false)
     const result = await createHandoff(sessionID, (await accounts.snapshot()).accounts.find((item) => item.id === binding.accountID), target, "all_accounts_exhausted")
     const epoch = result?.epoch.epoch ?? binding.epoch
     await scheduler.wait({ sessionID, goalID: data.goal.id, agent: binding.agent, model: binding.model, targetAccountID: target.id, resumeAt, epoch })
@@ -141,6 +145,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
 
   async function emergencyBody(input: { sessionID?: string; from: Account; to: Account; requestInput: RequestInfo | URL; init?: RequestInit }) {
     if (!input.sessionID || typeof input.init?.body !== "string") return
+    void summaries.schedule(input.sessionID, true, "emergency").catch(() => {})
     const result = await createHandoff(input.sessionID, input.from, input.to, "emergency_failover")
     if (!result) return
     try {
@@ -176,7 +181,7 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
   })
 
   return {
-    async dispose() { scheduler.stop(); clearInterval(actionTimer); cancelBrowserAuthorization("Codex account pool plugin stopped") },
+    async dispose() { scheduler.stop(); summaries.stop(); clearInterval(actionTimer); cancelBrowserAuthorization("Codex account pool plugin stopped") },
     async config(config) {
       const cfg = await settings()
       const existingPool = config.provider?.[POOL_PROVIDER_ID] as { models?: Record<string, any> } | undefined
@@ -244,16 +249,17 @@ const ServerPlugin: Plugin = async (ctx, rawOptions) => {
       codex_quota_refresh: tool({ description: "Refresh Codex quota for all accounts", args: {}, async execute() { const result = await quota.refreshAll(true); return `Quota atualizada: ${result.filter((item) => item.status === "fulfilled").length} sucesso(s), ${result.filter((item) => item.status === "rejected").length} falha(s).` } }),
       codex_handoff_note: tool({ description: "Persist an important decision, constraint, blocker, or reference for future handoffs", args: { category: tool.schema.enum(["decision", "constraint", "blocker", "reference"]), text: tool.schema.string(), replaceKey: tool.schema.string().optional() }, async execute(args, context) { await ledger.note(context.sessionID, args.category, args.text, args.replaceKey); return "Nota de handoff salva." } }),
       codex_handoff_status: tool({ description: "Show handoff, summary and waiting state for this session", args: {}, async execute(_, context) { return JSON.stringify({ binding: await bindings.get(context.sessionID), state: await handoff.state(context.sessionID), summary: await handoff.summary(context.sessionID) }, null, 2) } }),
-      codex_handoff_now: tool({ description: "Create a handoff to the next available Codex account in priority order", args: {}, async execute(_, context) { const binding = await bindings.get(context.sessionID); const snapshot = await accounts.snapshot(); const source = snapshot.accounts.find((item) => item.id === binding?.accountID); const target = selectAccount(rotateAccounts(orderAccounts(snapshot.accounts, snapshot.order), source?.id).filter((item) => item.id !== source?.id)); if (!target) return "Nenhuma conta alternativa disponível."; await summaries.refresh(context.sessionID, await settings()).catch(() => {}); await createHandoff(context.sessionID, source, target, "manual_handoff"); return `Handoff preparado para ${target.label}.` } }),
+      codex_handoff_now: tool({ description: "Create a handoff to the next available Codex account in priority order", args: {}, async execute(_, context) { const binding = await bindings.get(context.sessionID); const snapshot = await accounts.snapshot(); const source = snapshot.accounts.find((item) => item.id === binding?.accountID); const target = selectAccount(rotateAccounts(orderAccounts(snapshot.accounts, snapshot.order), source?.id).filter((item) => item.id !== source?.id)); if (!target) return "Nenhuma conta alternativa disponível."; await summaries.refresh(context.sessionID, "emergency").catch(() => false); await createHandoff(context.sessionID, source, target, "manual_handoff"); return `Handoff preparado para ${target.label}.` } }),
     },
     async event({ event }: any) {
       const properties = event.properties ?? {}
       const sid = properties.sessionID ?? properties.info?.sessionID
-      if (!sid || summaries.isInternal(sid)) return
+      if (await summaries.event(event)) return
+      if (!sid) return
       const binding = await bindings.get(sid)
       if (!isPoolProvider(binding?.model?.providerID)) return
-      if (event.type === "session.idle") { const cfg = await settings(); summaries.schedule(sid, cfg); void proactive(sid).catch(() => {}) }
-      if (event.type === "session.deleted") { await scheduler.cancel(sid); await bindings.removeSession(sid) }
+      if (event.type === "session.idle") { void summaries.schedule(sid).catch(() => {}); void proactive(sid).catch(() => {}) }
+      if (event.type === "session.deleted") { await summaries.cancel(sid); await scheduler.cancel(sid); await bindings.removeSession(sid) }
       if (event.type === "file.edited" || event.type === "file.watcher.updated") { const file = properties.file ?? properties.path; if (typeof file === "string") await ledger.file(sid, file) }
       if (event.type === "todo.updated" && Array.isArray(properties.todos)) await ledger.setTodos(sid, properties.todos)
       if (event.type === "message.updated" && properties.info?.role === "assistant" && properties.info?.finish) await ledger.assistant(sid, properties.info.id)
