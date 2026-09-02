@@ -235,8 +235,17 @@ export function Footer(props: {
     { href: "#market-share", label: i18n.t("nav.marketShare") },
     { href: "#geo-breakdown", label: i18n.t("nav.geoBreakdown") },
   ]
-  const legal: HeaderLink[] = []
-  const connect = githubLink.href === "#" ? [] : [{ href: githubLink.href, label: i18n.t("header.github") }]
+  const legal = [
+    { href: "https://opencode.ai/legal/terms-of-service", label: i18n.t("footer.terms") },
+    { href: "https://opencode.ai/legal/privacy-policy", label: i18n.t("footer.privacy") },
+  ]
+  const connect = [
+    { href: "mailto:hello@opencode.ai", label: i18n.t("footer.contact") },
+    { href: "https://opencode.ai/discord", label: i18n.t("footer.community") },
+    { href: "https://x.com/opencode", label: "X" },
+    { href: githubLink.href, label: i18n.t("header.github") },
+    { href: "https://www.youtube.com/@anomalyco", label: i18n.t("footer.youtube") },
+  ]
   const bridge = () =>
     props.bridge === undefined
       ? { href: "#geo-breakdown", label: i18n.t("nav.geoBreakdown").toUpperCase() }

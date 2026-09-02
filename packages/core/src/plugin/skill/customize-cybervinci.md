@@ -37,17 +37,17 @@ already-loaded config until then.
 
 ## Where files live
 
-| Scope                         | Path                                                                                                                      |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Project config                | `./cybervinci.json`, `./cybervinci.jsonc`, or `.cybervinci/cybervinci.json` (cybervinci walks up from the cwd to the worktree root) |
-| Global config                 | `~/.config/cybervinci/cybervinci.json` (NOT `~/.cybervinci/`)                                                                   |
-| Project agents                | `.cybervinci/agent/<name>.md` or `.cybervinci/agents/<name>.md`                                                               |
-| Global agents                 | `~/.config/cybervinci/agent(s)/<name>.md`                                                                                   |
-| Project commands              | `.cybervinci/command/<name>.md` or `.cybervinci/commands/<name>.md`                                                           |
-| Global commands               | `~/.config/cybervinci/command(s)/<name>.md`                                                                                 |
-| Project skills                | `.cybervinci/skill(s)/<name>/SKILL.md`                                                                                      |
-| Global skills                 | `~/.config/cybervinci/skill(s)/<name>/SKILL.md`                                                                             |
-| External skills (auto-loaded) | `~/.claude/skills/<name>/SKILL.md`, `~/.agents/skills/<name>/SKILL.md`                                                    |
+| Scope                         | Path                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project config                | `./cybervinci.json`, `./cybervinci.jsonc`, `.cybervinci/cybervinci.json`, or `.cybervinci/cybervinci.jsonc` (cybervinci walks up from the cwd to the worktree root) |
+| Global config                 | `~/.config/cybervinci/cybervinci.json` or `~/.config/cybervinci/cybervinci.jsonc` (NOT `~/.cybervinci/`)                                                            |
+| Project agents                | `.cybervinci/agent/<name>.md` or `.cybervinci/agents/<name>.md`                                                                                                     |
+| Global agents                 | `~/.config/cybervinci/agent(s)/<name>.md`                                                                                                                           |
+| Project commands              | `.cybervinci/command/<name>.md` or `.cybervinci/commands/<name>.md`                                                                                                 |
+| Global commands               | `~/.config/cybervinci/command(s)/<name>.md`                                                                                                                         |
+| Project skills                | `.cybervinci/skill(s)/<name>/SKILL.md`                                                                                                                              |
+| Global skills                 | `~/.config/cybervinci/skill(s)/<name>/SKILL.md`                                                                                                                     |
+| External skills (auto-loaded) | `~/.claude/skills/<name>/SKILL.md`, `~/.agents/skills/<name>/SKILL.md`                                                                                              |
 
 Configs from each scope are deep-merged. Project overrides global. Unknown
 top-level keys in `cybervinci.json` are rejected with `ConfigInvalidError`.

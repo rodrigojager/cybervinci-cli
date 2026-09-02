@@ -17,7 +17,10 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
-    "@cybervinci-ai/app#test": {
+    "@opencode-ai/function#test": {
+      "outputs": []
+    },
+    "@opencode-ai/app#test": {
       "dependsOn": ["^build"],
       "outputs": []
     },

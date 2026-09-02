@@ -1355,7 +1355,7 @@ export class Global extends HeyApiClient {
   /**
    * Upgrade cybervinci
    *
-   * Upgrade cybervinci to the specified version or latest if not specified.
+   * Upgrade cybervinci to the specified version.
    */
   public upgrade<ThrowOnError extends boolean = false>(
     parameters?: {

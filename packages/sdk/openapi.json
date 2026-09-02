@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "CYBERVINCI",
+    "title": "cybervinci",
     "version": "1.0.0",
     "description": "cybervinci api"
   },
@@ -548,7 +548,7 @@
             }
           }
         },
-        "description": "Upgrade cybervinci to the specified version or latest if not specified.",
+        "description": "Upgrade cybervinci to the specified version.",
         "summary": "Upgrade cybervinci",
         "requestBody": {
           "content": {
@@ -560,6 +560,7 @@
                     "type": "string"
                   }
                 },
+                "required": ["target"],
                 "additionalProperties": false
               }
             }
