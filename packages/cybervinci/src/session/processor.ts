@@ -30,7 +30,6 @@ import { KeyedMutex } from "@cybervinci-ai/core/effect/keyed-mutex"
 
 const DOOM_LOOP_THRESHOLD = 3
 const DEFAULT_PROVIDER_IDLE_TIMEOUT_MS = 5 * 60 * 1000
-const DEFAULT_SESSION_CYCLE_TIMEOUT_MS = 15 * 60 * 1000
 const DEFAULT_TERMINAL_PERSIST_TIMEOUT_MS = 1_000
 const DEFAULT_CLEANUP_TIMEOUT_MS = 15_000
 
@@ -39,10 +38,15 @@ function positiveInteger(value: string | undefined, fallback: number) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
+function optionalPositiveInteger(value: string | undefined) {
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined
+}
+
 export function sessionDeadlinePolicy(env: NodeJS.ProcessEnv = process.env) {
   return {
     providerIdleMs: positiveInteger(env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS, DEFAULT_PROVIDER_IDLE_TIMEOUT_MS),
-    cycleMaximumMs: positiveInteger(env.CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS, DEFAULT_SESSION_CYCLE_TIMEOUT_MS),
+    cycleMaximumMs: optionalPositiveInteger(env.CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS),
     terminalPersistMs: positiveInteger(
       env.CYBERVINCI_TERMINAL_PERSIST_TIMEOUT_MS,
       DEFAULT_TERMINAL_PERSIST_TIMEOUT_MS,
@@ -959,20 +963,26 @@ const layer = Layer.effect(
             )
           })
 
-          yield* Fiber.join(worker).pipe(
-            Effect.timeoutOrElse({
-              duration: deadlines.cycleMaximumMs,
-              orElse: () =>
-                Effect.gen(function* () {
-                  yield* Effect.sleep("1 millis").pipe(
-                    Effect.andThen(Effect.sync(() => worker.interruptUnsafe())),
-                    Effect.forkDetach({ startImmediately: true }),
-                  )
-                  return yield* Effect.fail(
-                    new SessionDeadlineError("cycle_timeout", deadlines.cycleMaximumMs),
-                  )
-                }),
-            }),
+          const cycleMaximumMs = deadlines.cycleMaximumMs
+          const cycle = Fiber.join(worker)
+          const guardedCycle =
+            cycleMaximumMs === undefined
+              ? cycle
+              : cycle.pipe(
+                  Effect.timeoutOrElse({
+                    duration: cycleMaximumMs,
+                    orElse: () =>
+                      Effect.gen(function* () {
+                        yield* Effect.sleep("1 millis").pipe(
+                          Effect.andThen(Effect.sync(() => worker.interruptUnsafe())),
+                          Effect.forkDetach({ startImmediately: true }),
+                        )
+                        return yield* Effect.fail(new SessionDeadlineError("cycle_timeout", cycleMaximumMs))
+                      }),
+                  }),
+                )
+
+          yield* guardedCycle.pipe(
             Effect.onInterrupt(() =>
               Effect.gen(function* () {
                 worker.interruptUnsafe()

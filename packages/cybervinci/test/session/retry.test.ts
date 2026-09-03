@@ -4,7 +4,7 @@ import { SessionV1 } from "@cybervinci-ai/core/v1/session"
 import type { NamedError } from "@cybervinci-ai/core/util/error"
 import { APICallError } from "ai"
 import { setTimeout as sleep } from "node:timers/promises"
-import { Effect, Schedule, Schema } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Schedule, Schema } from "effect"
 import { CrossSpawnSpawner } from "@cybervinci-ai/core/cross-spawn-spawner"
 import { SessionRetry } from "../../src/session/retry"
 import { MessageV2 } from "../../src/session/message-v2"
@@ -18,10 +18,10 @@ const providerID = ProviderV2.ID.make("test")
 const retryProvider = "test"
 const it = testEffect(LayerNode.compile(LayerNode.group([SessionStatus.node, CrossSpawnSpawner.node])))
 
-function apiError(headers?: Record<string, string>): SessionV1.APIError {
+function apiError(headers?: Record<string, string>, message = "boom"): SessionV1.APIError {
   return Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
     new SessionV1.APIError({
-      message: "boom",
+      message,
       isRetryable: true,
       responseHeaders: headers,
     }).toObject(),
@@ -147,10 +147,31 @@ describe("session.retry.delay", () => {
     }),
   )
 
+  it.instance("policy keeps retrying connection failures beyond the normal limit", () =>
+    Effect.gen(function* () {
+      const attempts: number[] = []
+      const error = apiError({ "retry-after-ms": "0" }, "Cannot connect to API: Unable to connect")
+      const step = yield* Schedule.toStepWithMetadata(
+        SessionRetry.policy({
+          provider: "test",
+          parse: Schema.decodeUnknownSync(SessionV1.APIError.Schema),
+          set: (info) =>
+            Effect.sync(() => {
+              attempts.push(info.attempt)
+            }),
+        }),
+      )
+
+      yield* Effect.forEach(Array.from({ length: SessionRetry.RETRY_MAX_RETRIES + 3 }), () => step(error))
+
+      expect(attempts).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8])
+    }),
+  )
+
   it.instance("policy supports callers that disable retries", () =>
     Effect.gen(function* () {
       const attempts: number[] = []
-      const error = apiError({ "retry-after-ms": "0" })
+      const error = apiError({ "retry-after-ms": "0" }, "Cannot connect to API: Unable to connect")
       const step = yield* Schedule.toStepWithMetadata(
         SessionRetry.policy({
           provider: "test",
@@ -168,9 +189,52 @@ describe("session.retry.delay", () => {
       expect(attempts).toStrictEqual([])
     }),
   )
+
+  it.instance("connection retry backoff remains immediately interruptible", () =>
+    Effect.gen(function* () {
+      const waiting = yield* Deferred.make<void>()
+      const error = apiError({ "retry-after-ms": "10000" }, "Cannot connect to API: Unable to connect")
+      const fiber = yield* Effect.fail(error).pipe(
+        Effect.retry(
+          SessionRetry.policy({
+            provider: "test",
+            parse: Schema.decodeUnknownSync(SessionV1.APIError.Schema),
+            set: () => Deferred.succeed(waiting, undefined).pipe(Effect.asVoid),
+          }),
+        ),
+        Effect.forkChild,
+      )
+
+      yield* Deferred.await(waiting)
+      const start = Date.now()
+      yield* Fiber.interrupt(fiber)
+      const exit = yield* Fiber.await(fiber)
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isFailure(exit)) expect(Cause.hasInterrupts(exit.cause)).toBe(true)
+      expect(Date.now() - start).toBeLessThan(250)
+    }),
+  )
 })
 
 describe("session.retry.retryable", () => {
+  test.each([
+    "Cannot connect to API: Unable to connect",
+    "Connection reset by server",
+    "Provider response headers timed out after 10000ms",
+    "Service unavailable",
+    "CYBERVINCI session provider idle deadline exceeded after 300000ms",
+  ])("classifies persistent connection failures: %s", (message) => {
+    expect(SessionRetry.connectionFailure(wrap(message))).toBe(true)
+  })
+
+  test.each(["Rate limit exceeded", "Internal server error", "Model not found"])(
+    "does not classify non-connection failures as persistent: %s",
+    (message) => {
+      expect(SessionRetry.connectionFailure(wrap(message))).toBe(false)
+    },
+  )
+
   test("retries serialized too_many_requests messages", () => {
     const error = wrap(JSON.stringify({ type: "error", error: { type: "too_many_requests" } }))
     expect(SessionRetry.retryable(error, retryProvider)).toEqual({ message: "Too Many Requests" })

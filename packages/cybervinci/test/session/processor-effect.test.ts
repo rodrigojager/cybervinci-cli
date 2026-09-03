@@ -14,6 +14,7 @@ import { Session } from "@/session/session"
 import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
 import { SessionProcessor } from "../../src/session/processor"
+import { SessionRetry } from "../../src/session/retry"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
 import { SessionStatus } from "../../src/session/status"
 import { SessionSummary } from "../../src/session/summary"
@@ -1243,7 +1244,7 @@ it.live("session.processor effect tests mark interruptions aborted without manua
   ),
 )
 
-itNever.live("session.processor effect tests release a silent provider stream at the idle deadline", () =>
+itNever.live("session.processor effect tests retry a silent provider stream at the idle watchdog", () =>
   provideTmpdirInstance(
     (dir) =>
       Effect.gen(function* () {
@@ -1262,27 +1263,39 @@ itNever.live("session.processor effect tests release a silent provider stream at
             model: mdl,
           })
 
-          const result = yield* handle.process({
-            user: {
-              id: parent.id,
+          const run = yield* handle
+            .process({
+              user: {
+                id: parent.id,
+                sessionID: chat.id,
+                role: "user",
+                time: parent.time,
+                agent: parent.agent,
+                model: { providerID: ref.providerID, modelID: ref.modelID },
+              } satisfies SessionV1.User,
               sessionID: chat.id,
-              role: "user",
-              time: parent.time,
-              agent: parent.agent,
-              model: { providerID: ref.providerID, modelID: ref.modelID },
-            } satisfies SessionV1.User,
-            sessionID: chat.id,
-            model: mdl,
-            agent: agent(),
-            system: [],
-            messages: [{ role: "user", content: "provider idle timeout" }],
-            tools: {},
-          })
+              model: mdl,
+              agent: agent(),
+              system: [],
+              messages: [{ role: "user", content: "provider idle timeout" }],
+              tools: {},
+            })
+            .pipe(Effect.forkChild)
 
-          expect(result).toBe("stop")
-          expect(handle.message.error).toMatchObject({
-            data: { message: "CYBERVINCI session provider idle deadline exceeded after 25ms" },
+          const retry = yield* waitFor(
+            sts.get(chat.id).pipe(Effect.map((state) => (state.type === "retry" ? state : undefined))),
+            "silent provider stream did not enter retry state",
+          )
+          expect(retry).toMatchObject({
+            type: "retry",
+            attempt: 1,
+            message: SessionRetry.CONNECTION_RETRY_MESSAGE,
           })
+          expect(handle.message.error).toBeUndefined()
+
+          yield* Fiber.interrupt(run)
+          expect(Exit.isFailure(yield* Fiber.await(run))).toBe(true)
+          expect(handle.message.error?.name).toBe("MessageAbortedError")
           expect(yield* sts.get(chat.id)).toMatchObject({ type: "idle" })
         }).pipe(
           Effect.ensuring(

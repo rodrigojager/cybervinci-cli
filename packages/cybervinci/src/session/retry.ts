@@ -29,13 +29,22 @@ export const RETRY_JITTER_FACTOR = 0.25
 export const RETRY_MAX_DELAY_NO_HEADERS = 30_000 // 30 seconds
 export const RETRY_MAX_DELAY = 2_147_483_647 // max 32-bit signed integer for setTimeout
 export const RETRY_MAX_RETRIES = 5
+export const CONNECTION_RETRY_MESSAGE = "Reconnecting... waiting for network"
+
+const CONNECTION_FAILURE_PATTERNS = [
+  /cannot connect|unable to connect|failed to connect/i,
+  /terminated|fetch failed|failed to fetch|network[-_\s]error|upstream connect|connection error|connection refused|connection lost|connection reset|socket connection was closed|socket hang up|reset before headers|getaddrinfo|enotfound|eai_again|econnrefused|econnreset|etimedout/i,
+  /bad gateway|gateway timeout|service unavailable|temporarily unavailable/i,
+  /\b(?:request|response|connection|network|stream|read|headers?).*?\b(?:timeout|timed out|time out)\b/i,
+  /^timeout$|\btimed out\b/i,
+  /session provider idle deadline exceeded/i,
+]
 
 const RETRYABLE_MESSAGE_PATTERNS = [
   /429|500|502|503|504|524/i,
   /rate increased too quickly|rate limit|rate-limit|rate_limit|too many requests/i,
   /overloaded|service unavailable|service_unavailable|service-unavailable|internal error|internal_error|internal server error|server error|server_error|server-error|provider returned error|provider_returned_error|provider-returned-error/i,
-  /terminated|fetch failed|failed to fetch|network[-_\s]error|upstream connect|connection error|connection refused|connection lost|socket connection was closed|socket hang up|reset before headers|getaddrinfo|enotfound|eai_again|econnrefused|econnreset|etimedout/i,
-  /^timeout$|\b(?:request|response|connection|network|stream|read) (?:timeout|timed out|time out)\b/i,
+  ...CONNECTION_FAILURE_PATTERNS,
   /try your request again|retry your request|resource exhausted|resource_exhausted/i,
   /\btry again (?:later|in\b)|\b(?:currently|temporarily) at capacity\b/i,
 ]
@@ -154,8 +163,26 @@ export function retryable(error: Err, provider: string) {
   return undefined
 }
 
+export function connectionFailure(error: Err) {
+  if (SessionV1.ContextOverflowError.isInstance(error)) return false
+  if (SessionV1.APIError.isInstance(error)) {
+    if ([408, 502, 503, 504, 522, 523, 524, 525, 527, 598, 599].includes(error.data.statusCode ?? 0)) return true
+    const metadata = isRecord(error.data.metadata) ? error.data.metadata : undefined
+    return [error.data.message, error.data.responseBody, metadata?.code, metadata?.message].some(
+      matchesConnectionFailure,
+    )
+  }
+
+  const message = isRecord(error.data) ? error.data.message : undefined
+  return matchesConnectionFailure(message)
+}
+
 function matchesRetryableMessage(value: unknown) {
   return typeof value === "string" && RETRYABLE_MESSAGE_PATTERNS.some((pattern) => pattern.test(value))
+}
+
+function matchesConnectionFailure(value: unknown) {
+  return typeof value === "string" && CONNECTION_FAILURE_PATTERNS.some((pattern) => pattern.test(value))
 }
 
 function str(value: unknown) {
@@ -191,13 +218,17 @@ export function policy(opts: {
       const error = opts.parse(meta.input)
       const retry = retryable(error, opts.provider)
       if (!retry) return Cause.done(meta.attempt)
-      if (meta.attempt > (opts.maxRetries ?? RETRY_MAX_RETRIES)) return Cause.done(meta.attempt)
+      // Connectivity retries remain interruptible but do not abandon an active
+      // session merely because a local network or provider route is temporarily down.
+      const persistentConnection = connectionFailure(error)
+      const retryLimit = opts.maxRetries ?? (persistentConnection ? undefined : RETRY_MAX_RETRIES)
+      if (retryLimit !== undefined && meta.attempt > retryLimit) return Cause.done(meta.attempt)
       return Effect.gen(function* () {
         const wait = delay(meta.attempt, SessionV1.APIError.isInstance(error) ? error : undefined)
         const now = yield* Clock.currentTimeMillis
         yield* opts.set({
           attempt: meta.attempt,
-          message: retry.message,
+          message: persistentConnection ? CONNECTION_RETRY_MESSAGE : retry.message,
           action: retry.action,
           next: now + wait,
         })
