@@ -137,6 +137,9 @@ export class AccountStore {
       const now = Date.now()
       if (account) {
         Object.assign(account, Object.fromEntries(Object.entries(normalized).filter(([, value]) => value !== undefined)), { updatedAt: now, enabled: true })
+        account.health.cooldownUntil = undefined
+        account.health.lastStatus = undefined
+        account.health.lastErrorAt = undefined
         if (normalized.label) account.label = normalized.label
         data.initialized = true
         return structuredClone(account)

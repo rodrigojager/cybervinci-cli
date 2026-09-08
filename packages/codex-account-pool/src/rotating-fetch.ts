@@ -2,7 +2,7 @@ import type { Account, Settings } from "./domain"
 import { AccountStore } from "./store"
 import { BindingStore, earliestAccount, orderAccounts, rotateAccounts, selectAccount } from "./bindings"
 import { blockedUntil, parseQuotaPayload, QuotaService } from "./quota"
-import { DEFAULT_CODEX_ENDPOINT, DEFAULT_ISSUER, refreshTokens, tokenIdentity } from "./oauth"
+import { DEFAULT_CODEX_ENDPOINT, DEFAULT_ISSUER, refreshTokens, tokenIdentity, TokenRefreshError } from "./oauth"
 import { FileLock } from "./storage"
 
 export class AllAccountsExhaustedError extends Error {
@@ -10,7 +10,12 @@ export class AllAccountsExhaustedError extends Error {
 }
 
 export class NoAccountsAvailableError extends Error {
-  constructor(readonly account: Account | undefined, readonly retryAt: number | undefined) { super("No enabled Codex account is currently available"); this.name = "NoAccountsAvailableError" }
+  constructor(readonly account: Account | undefined, readonly retryAt: number | undefined) {
+    super(account
+      ? `Codex accounts are temporarily unavailable after request failures. Retry in ${Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 1000))}s${account.health.lastStatus === 401 ? " or reconnect the account in the Codex Account Pool" : ""}.`
+      : "No enabled Codex account is configured. Connect or enable an account in the Codex Account Pool.")
+    this.name = "NoAccountsAvailableError"
+  }
 }
 
 export interface RotationOptions {
@@ -72,31 +77,26 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
   const baseFetch = options.fetch ?? globalThis.fetch
   const bindings = options.bindings ?? new BindingStore()
   const quota = options.quota ?? new QuotaService(store, baseFetch)
-  const refreshes = new Map<string, Promise<Account>>()
-
-  async function refresh(account: Account) {
-    let pending = refreshes.get(account.id)
-    if (!pending) {
-      pending = (async () => {
-        const lock = await FileLock.acquire(`refresh:${account.id}`, 15_000, 60_000)
-        try {
-          const latest = (await store.snapshot()).accounts.find((item) => item.id === account.id) ?? account
-          if (latest.accessToken && latest.expiresAt > Date.now() + 30_000) return latest
-          const tokens = await refreshTokens(latest.refreshToken, issuer)
-          const identity = tokenIdentity(tokens)
-          await store.updateTokens(latest.id, {
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token ?? latest.refreshToken,
-            expiresAt: Date.now() + (tokens.expires_in ?? 3600) * 1000,
-            workspaceAccountID: identity.accountId ?? latest.workspaceAccountID,
-            email: identity.email ?? latest.email,
-          })
-          return (await store.snapshot()).accounts.find((item) => item.id === latest.id)!
-        } finally { await lock.release() }
-      })().finally(() => refreshes.delete(account.id))
-      refreshes.set(account.id, pending)
-    }
-    return pending
+  async function refresh(account: Account, rejectedToken?: string): Promise<Account> {
+    const lock = await FileLock.acquire(`refresh:${account.id}`, 20_000, 60_000)
+    try {
+      const latest = (await store.snapshot()).accounts.find((item) => item.id === account.id)
+      if (!latest || !latest.enabled) throw new Error("Codex account was removed or disabled during token refresh")
+      // Reload under the cross-process lock before spending a refresh token.
+      // A 401 must refresh even a locally unexpired token unless another
+      // process has already replaced the exact credential that was rejected.
+      if (latest.accessToken && latest.expiresAt > Date.now() + 30_000 && latest.accessToken !== rejectedToken) return latest
+      const tokens = await refreshTokens(latest.refreshToken, issuer)
+      const identity = tokenIdentity(tokens)
+      await store.updateTokens(latest.id, {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token ?? latest.refreshToken,
+        expiresAt: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+        workspaceAccountID: identity.accountId ?? latest.workspaceAccountID,
+        email: identity.email ?? latest.email,
+      })
+      return (await store.snapshot()).accounts.find((item) => item.id === latest.id)!
+    } finally { await lock.release() }
   }
 
   async function execute(account: Account, input: RequestInfo | URL, init?: RequestInit) {
@@ -104,12 +104,15 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
     const headers = requestHeaders(input, init)
     headers.delete("x-api-key")
     headers.delete("Authorization")
+    headers.delete("ChatGPT-Account-Id")
     headers.set("authorization", `Bearer ${account.accessToken}`)
     if (account.workspaceAccountID) headers.set("ChatGPT-Account-Id", account.workspaceAccountID)
     const source = input instanceof Request ? new URL(input.url) : new URL(input.toString())
     const url = source.pathname.includes("/v1/responses") || source.pathname.includes("/chat/completions") ? new URL(endpoint) : source
-    if (input instanceof Request) return baseFetch(new Request(url, input), { ...init, headers })
-    return baseFetch(url, { ...init, headers })
+    const response = input instanceof Request
+      ? await baseFetch(new Request(url, input), { ...init, headers })
+      : await baseFetch(url, { ...init, headers })
+    return { account, response }
   }
 
   return async (originalInput: RequestInfo | URL, originalInit?: RequestInit): Promise<Response> => {
@@ -133,29 +136,50 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
       throw new NoAccountsAvailableError(earliest?.account, earliest?.at)
     }
     const ordered = priority
-      .filter((item) => blockedUntil(item, now) <= now && (item.health.cooldownUntil ?? 0) <= now)
+      .filter((item) => item.enabled && blockedUntil(item, now) <= now && (item.health.cooldownUntil ?? 0) <= now)
     const attempts = replayable(originalInput, originalInit) ? Math.min(settings.rotation.maxAttempts, ordered.length) : 1
     let input = originalInput
     let init = originalInit
-    let lastResponse: Response | undefined
-    let lastError: unknown
 
     for (let index = 0; index < attempts; index++) {
       let account = ordered[index]
       throwIfCancelled(input, init)
+      const reservation = await bindings.reserve(account.id, sid)
+      let released = false
+      let streaming = false
+      let response: Response | undefined
+      const release = async () => { if (released) return; await bindings.releaseReservation(reservation.id); released = true }
+      const next = index + 1 < attempts ? ordered[index + 1] : undefined
       try {
-        let reservation = await bindings.reserve(account.id, sid)
-        let released = false
-        const release = async () => { if (released) return; released = true; await bindings.releaseReservation(reservation.id) }
-        let response: Response
-        try { response = await execute(account, cloneInput(input), init) } catch (error) { await release(); throw error }
-        if ((response.status === 401 || response.status === 403) && account.refreshToken) {
-          await response.body?.cancel().catch(() => {})
-          account = await refresh({ ...account, expiresAt: 0 })
+        try {
+          const result = await execute(account, cloneInput(input), init)
+          account = result.account
+          response = result.response
+          if (response.status === 401 && account.refreshToken && replayable(input, init)) {
+            await response.body?.cancel().catch(() => {})
+            account = await refresh(account, account.accessToken)
+            throwIfCancelled(input, init)
+            const retry = await execute(account, cloneInput(input), init)
+            account = retry.account
+            response = retry.response
+          }
+        } catch (error) {
+          if (cancelledByCaller(input, init, error)) {
+            const signal = requestSignal(input, init)
+            throw signal?.aborted ? signal.reason ?? error : error
+          }
+          // Local storage failures must not quarantine an authenticated account.
+          const code = error && typeof error === "object" && "code" in error ? String(error.code) : ""
+          if (["EPERM", "EACCES", "EBUSY", "ENOSPC", "EIO", "EROFS"].includes(code) || (error instanceof Error && error.message.startsWith("Invalid plugin data file:"))) throw error
+          const status = error instanceof TokenRefreshError ? error.status : 0
+          await store.recordOutcome(account.id, status, false, Date.now() + settings.rotation.authFailureCooldownMs)
           await release()
-          reservation = await bindings.reserve(account.id, sid)
-          released = false
-          try { response = await execute(account, cloneInput(input), init) } catch (error) { await release(); throw error }
+          await options.onFailover?.(sid, account, next, status)
+          if (!next) throw error
+          const prepared = await options.prepareFailover?.({ sessionID: sid, from: account, to: next, requestInput: input, init })
+          input = prepared?.requestInput ?? input
+          init = prepared?.init ?? init
+          continue
         }
         if (response.ok) {
           await store.recordOutcome(account.id, response.status, true)
@@ -168,9 +192,10 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
             async pull(controller) { try { const next = await reader.read(); if (next.done) { await release(); controller.close() } else controller.enqueue(next.value) } catch (error) { await release(); controller.error(error) } },
             async cancel(reason) { await reader.cancel(reason).catch(() => {}); await release() },
           })
-          return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
+          const result = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
+          streaming = true
+          return result
         }
-        lastResponse = response
         const retryable = response.status === 401 || response.status === 403 || response.status === 429 || response.status >= 500
         if (!retryable) { await store.recordOutcome(account.id, response.status, false); await release(); return response }
         let cooldown = response.status === 429 ? settings.rotation.rateLimitCooldownMs : settings.rotation.authFailureCooldownMs
@@ -182,9 +207,8 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
           await store.updateQuota(account.id, parsed)
         }
         await store.recordOutcome(account.id, response.status, false, Date.now() + cooldown)
-        const next = ordered[index + 1]
         await options.onFailover?.(sid, account, next, response.status)
-        if (!next || index + 1 >= attempts) {
+        if (!next) {
           await release()
           if (response.status === 429) {
             const fresh = await store.snapshot()
@@ -199,21 +223,12 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
         input = prepared?.requestInput ?? input
         init = prepared?.init ?? init
       } catch (error) {
-        if (cancelledByCaller(input, init, error)) {
-          const signal = requestSignal(input, init)
-          throw signal?.aborted ? signal.reason ?? error : error
-        }
-        lastError = error
-        await store.recordOutcome(account.id, 0, false, Date.now() + settings.rotation.authFailureCooldownMs)
-        const next = ordered[index + 1]
-        await options.onFailover?.(sid, account, next, 0)
-        if (next) {
-          const prepared = await options.prepareFailover?.({ sessionID: sid, from: account, to: next, requestInput: input, init })
-          input = prepared?.requestInput ?? input; init = prepared?.init ?? init
-        }
+        await response?.body?.cancel().catch(() => {})
+        throw error
+      } finally {
+        if (!streaming) await release()
       }
     }
-    if (lastResponse) return lastResponse
-    throw lastError ?? new Error("All Codex OAuth accounts failed")
+    throw new Error("All Codex OAuth accounts failed")
   }
 }

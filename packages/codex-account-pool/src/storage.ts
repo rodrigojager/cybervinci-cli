@@ -72,7 +72,19 @@ export async function atomicWrite(path: string, value: unknown, secret = false) 
   await mkdir(dirname(path), { recursive: true })
   const temp = `${path}.${hostname()}.${process.pid}.${randomUUID()}.tmp`
   await writeFile(temp, JSON.stringify(value, null, 2), { mode: secret ? 0o600 : 0o644 })
-  await rename(temp, path)
+  // Windows readers/antivirus can briefly deny replacement. Keep the original
+  // file and retry the same complete write, especially for rotated OAuth tokens.
+  const started = Date.now()
+  for (;;) {
+    try {
+      await rename(temp, path)
+      break
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (process.platform !== "win32" || !["EPERM", "EACCES", "EBUSY"].includes(code ?? "") || Date.now() - started >= 2000) throw error
+      await sleep(50)
+    }
+  }
   if (secret) await chmod(path, 0o600).catch(() => {})
 }
 

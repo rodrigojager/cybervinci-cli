@@ -83,6 +83,17 @@ export function tokenIdentity(tokens: Pick<OAuthTokens, "id_token" | "access_tok
   }
 }
 
+export class TokenRefreshError extends Error {
+  constructor(readonly status: number, readonly reason?: string) {
+    const detail = reason === "refresh_token_reused" ? "refresh token was already used"
+      : reason === "refresh_token_expired" ? "refresh token expired"
+      : reason === "refresh_token_invalidated" ? "refresh token was revoked"
+      : "authentication was rejected"
+    super(`Token refresh failed: ${status}${status === 401 || (status === 400 && reason === "invalid_grant") ? ` (${detail}; reconnect this account in the Codex Account Pool)` : ""}`)
+    this.name = "TokenRefreshError"
+  }
+}
+
 export async function refreshTokens(refreshToken: string, issuer = DEFAULT_ISSUER): Promise<OAuthTokens> {
   const response = await fetch(`${issuer}/oauth/token`, {
     method: "POST",
@@ -94,7 +105,13 @@ export async function refreshTokens(refreshToken: string, issuer = DEFAULT_ISSUE
     }),
     signal: AbortSignal.timeout(15_000),
   })
-  if (!response.ok) throw new Error(`Token refresh failed: ${response.status}`)
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => undefined)
+    const error = payload && typeof payload === "object" && "error" in payload ? payload.error : undefined
+    const code = typeof error === "string" ? error : error && typeof error === "object" && "code" in error ? error.code : undefined
+    const known = ["refresh_token_reused", "refresh_token_expired", "refresh_token_invalidated", "invalid_grant"]
+    throw new TokenRefreshError(response.status, typeof code === "string" && known.includes(code) ? code : undefined)
+  }
   return response.json() as Promise<OAuthTokens>
 }
 
