@@ -33,6 +33,10 @@ function catalogModel(id: string, apiID = id): OpenAIModelCatalogEntry {
 }
 
 test("keeps concrete GPT-5.6 models as the startup fallback", () => {
+  expect(POOL_MODELS["gpt-6-astra"]).toMatchObject({
+    family: "gpt-astra",
+    limit: { context: 1_050_000, input: 922_000, output: 128_000 },
+  })
   expect(Object.keys(POOL_MODELS).filter((model) => model.startsWith("gpt-5.6"))).toEqual([
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -65,7 +69,7 @@ test("derives every pool model from the resolved OpenAI catalog", () => {
   expect(source).toEqual(original)
 })
 
-test("mirrors OpenAI models without replacing pool transport or explicit overrides", () => {
+test("mirrors OpenAI models without replacing fallbacks, pool transport, or explicit overrides", () => {
   const rotatingFetch = (() => undefined) as unknown as typeof fetch
   const config: any = { provider: { [POOL_PROVIDER_ID]: { models: {} } } }
   const pool = configurePoolProvider(config, { fetch: rotatingFetch, apiKey: "pool-key" })
@@ -79,8 +83,10 @@ test("mirrors OpenAI models without replacing pool transport or explicit overrid
     "local-override": { name: "Local override" },
   })
 
-  expect(Object.keys(pool.models)).toEqual(["gpt-5.6-sol", "gpt-6.0-codex", "local-override"])
+  expect(pool.models["gpt-6-astra"]).toEqual(POOL_MODELS["gpt-6-astra"])
+  expect(pool.models["gpt-5.6-sol"].name).toBe("GPT-5.6-SOL")
   expect(pool.models["gpt-6.0-codex"].name).toBe("Custom future model")
+  expect(pool.models["local-override"].name).toBe("Local override")
   expect(pool.options).toMatchObject({ apiKey: "pool-key", fetch: rotatingFetch })
 })
 

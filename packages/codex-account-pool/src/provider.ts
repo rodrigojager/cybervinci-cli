@@ -36,6 +36,17 @@ interface ConfiguredPoolProvider {
 }
 
 export const POOL_MODELS = {
+  "gpt-6-astra": {
+    name: "GPT-6 Astra (Pooler)",
+    family: "gpt-astra",
+    attachment: true,
+    reasoning: true,
+    temperature: false,
+    tool_call: true,
+    modalities: { input: ["text", "image", "pdf"], output: ["text"] },
+    limit: { context: 1_050_000, input: 922_000, output: 128_000 },
+    cost: zeroCost,
+  },
   "gpt-5.6-sol": {
     name: "GPT-5.6 Sol (Pooler)",
     family: "gpt",
@@ -175,6 +186,7 @@ export function mirrorOpenAIModelsIntoPool(
   explicitOverrides: Record<string, any> = {},
 ) {
   provider.models = {
+    ...POOL_MODELS,
     ...poolModelsFromOpenAI(sourceModels),
     ...explicitOverrides,
   }
