@@ -9,6 +9,86 @@ const waitForState = <A, E>(runner: Runner.Runner<A, E>, tag: Runner.State<A, E>
   }).pipe(Effect.timeout("1 second"))
 
 describe("Runner", () => {
+  it.live(
+    "cancellation idle notifications can re-enter admission without deadlocking",
+    Effect.gen(function* () {
+      const scope = yield* Scope.Scope
+      const entered = yield* Deferred.make<void>()
+      const runner: Runner.Runner<string> = Runner.make<string>(scope, {
+        onInterrupt: Effect.succeed("cancelled"),
+        onIdle: Effect.suspend(() => runner.withIdle(Effect.void).pipe(Effect.orDie)),
+      })
+      const task = yield* runner
+        .ensureRunning(Deferred.succeed(entered, undefined).pipe(Effect.andThen(Effect.never), Effect.as("done")))
+        .pipe(Effect.forkChild)
+      yield* Deferred.await(entered)
+      yield* runner.cancel
+      expect(yield* Fiber.join(task)).toBe("cancelled")
+      expect(runner.busy).toBe(false)
+    }),
+  )
+
+  it.live(
+    "idle mutations serialize with run admission and release on failure",
+    Effect.gen(function* () {
+      const scope = yield* Scope.Scope
+      const runner = Runner.make<string>(scope)
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const mutation = yield* runner
+        .withIdle(
+          Effect.gen(function* () {
+            yield* Deferred.succeed(entered, undefined)
+            yield* Deferred.await(release)
+            return yield* Effect.fail("mutation failed")
+          }),
+        )
+        .pipe(Effect.exit, Effect.forkChild)
+      yield* Deferred.await(entered)
+      const work = yield* runner.ensureRunning(Effect.succeed("started after mutation")).pipe(Effect.forkChild)
+      yield* Deferred.succeed(release, undefined)
+      expect(Exit.isFailure(yield* Fiber.join(mutation))).toBe(true)
+      expect(yield* Fiber.join(work)).toBe("started after mutation")
+      expect(yield* runner.withIdle(Effect.succeed("free"))).toBe("free")
+    }),
+  )
+
+  it.live(
+    "remains busy until interrupted work finishes cleanup",
+    Effect.gen(function* () {
+      const scope = yield* Scope.Scope
+      const runner = Runner.make<string>(scope)
+      const started = yield* Deferred.make<void>()
+      const cleaning = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      yield* Effect.gen(function* () {
+        const task = yield* runner
+          .ensureRunning(
+            Effect.gen(function* () {
+              yield* Deferred.succeed(started, undefined)
+              return yield* Effect.never.pipe(Effect.as("done"))
+            }).pipe(
+              Effect.ensuring(Deferred.succeed(cleaning, undefined).pipe(Effect.andThen(Deferred.await(release)))),
+            ),
+          )
+          .pipe(Effect.exit, Effect.forkChild)
+        yield* Deferred.await(started)
+        const stop = yield* runner.cancel.pipe(Effect.forkChild)
+        yield* Deferred.await(cleaning)
+        const busy = runner.busy
+        const shell = yield* runner.startShell(Effect.succeed("unsafe")).pipe(Effect.exit)
+        const mutation = yield* runner.withIdle(Effect.succeed("unsafe delete")).pipe(Effect.exit)
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(stop)
+        yield* Fiber.join(task)
+        expect(busy).toBe(true)
+        expect(Exit.isFailure(shell)).toBe(true)
+        expect(Exit.isFailure(mutation)).toBe(true)
+        expect(runner.busy).toBe(false)
+      }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)))
+    }),
+  )
+
   // --- ensureRunning semantics ---
 
   it.live(

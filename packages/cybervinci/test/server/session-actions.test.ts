@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, mock } from "bun:test"
 import { LayerNode } from "@cybervinci-ai/core/effect/layer-node"
-import { Effect, Layer } from "effect"
+import { Deferred, Effect, Fiber, Layer } from "effect"
+import { SessionRunState } from "@/session/run-state"
+import { MessageID, PartID } from "@/session/schema"
+import { ProviderV2 } from "@cybervinci-ai/core/provider"
+import { ModelV2 } from "@cybervinci-ai/core/model"
 import { Session as SessionNs } from "@/session/session"
 import { disposeAllInstances, TestInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 import { httpApiLayer, requestInDirectory } from "./httpapi-layer"
 
-const it = testEffect(Layer.mergeAll(LayerNode.compile(SessionNs.node), httpApiLayer))
+const it = testEffect(
+  Layer.mergeAll(LayerNode.compile(LayerNode.group([SessionNs.node, SessionRunState.node])), httpApiLayer),
+)
 
 afterEach(async () => {
   mock.restore()
@@ -14,6 +20,65 @@ afterEach(async () => {
 })
 
 describe("session action routes", () => {
+  it.instance("destructive routes reject an active writer without changing its history", () =>
+    Effect.gen(function* () {
+      const test = yield* TestInstance
+      const session = yield* SessionNs.Service
+      const state = yield* SessionRunState.Service
+      const chat = yield* session.create({})
+      const info = yield* session.updateMessage({
+        id: MessageID.ascending(),
+        sessionID: chat.id,
+        role: "user",
+        agent: "default",
+        time: { created: Date.now() },
+        model: { providerID: ProviderV2.ID.make("test"), modelID: ModelV2.ID.make("test") },
+      })
+      const part = yield* session.updatePart({
+        id: PartID.ascending(),
+        messageID: info.id,
+        sessionID: chat.id,
+        type: "text",
+        text: "keep this history",
+      })
+      yield* session.setRevert({ sessionID: chat.id, revert: { messageID: info.id }, summary: undefined })
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const work = yield* state
+        .ensureRunning(
+          chat.id,
+          Effect.succeed({ info, parts: [part] }),
+          Deferred.succeed(started, undefined).pipe(
+            Effect.andThen(Deferred.await(release)),
+            Effect.as({ info, parts: [part] }),
+          ),
+        )
+        .pipe(Effect.forkChild)
+      yield* Deferred.await(started)
+      const statuses = yield* Effect.gen(function* () {
+        const summarize = yield* requestInDirectory(`/session/${chat.id}/summarize`, test.directory, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ providerID: "test", modelID: "test" }),
+        })
+        const message = yield* requestInDirectory(`/session/${chat.id}/message/${info.id}`, test.directory, {
+          method: "DELETE",
+        })
+        const removedPart = yield* requestInDirectory(
+          `/session/${chat.id}/message/${info.id}/part/${part.id}`,
+          test.directory,
+          { method: "DELETE" },
+        )
+        return [summarize.status, message.status, removedPart.status]
+      }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)))
+      yield* Fiber.join(work)
+      expect(statuses).toEqual([400, 409, 400])
+      const messages = yield* session.messages({ sessionID: chat.id })
+      expect(messages.map((message) => message.info.id)).toEqual([info.id])
+      expect(messages[0].parts).toHaveLength(1)
+    }),
+  )
+
   it.instance(
     "session routes expose metadata on create, update, get, and fork",
     () =>

@@ -5,7 +5,8 @@ import { SessionProjector } from "@cybervinci-ai/core/session/projector"
 import fs from "fs/promises"
 import path from "path"
 import { CrossSpawnSpawner } from "@cybervinci-ai/core/cross-spawn-spawner"
-import { Effect } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber } from "effect"
+import { SessionRunState } from "@/session/run-state"
 import { Session } from "@/session/session"
 
 import { SessionRevert } from "../../src/session/revert"
@@ -19,7 +20,14 @@ import { ModelV2 } from "@cybervinci-ai/core/model"
 
 const it = testEffect(
   LayerNode.compile(
-    LayerNode.group([Session.node, SessionRevert.node, Snapshot.node, SessionProjector.node, CrossSpawnSpawner.node]),
+    LayerNode.group([
+      Session.node,
+      SessionRevert.node,
+      SessionRunState.node,
+      Snapshot.node,
+      SessionProjector.node,
+      CrossSpawnSpawner.node,
+    ]),
   ),
 )
 
@@ -108,6 +116,73 @@ const tokens = {
 }
 
 describe("revert + compact workflow", () => {
+  it.instance("stale cleanup cannot remove messages appended after an earlier cleanup", () =>
+    Effect.gen(function* () {
+      const session = yield* Session.Service
+      const revert = yield* SessionRevert.Service
+      const chat = yield* session.create({})
+      const first = yield* user(chat.id)
+      yield* session.setRevert({ sessionID: chat.id, revert: { messageID: first.id }, summary: undefined })
+      const stale = yield* session.get(chat.id)
+      yield* revert.cleanup(stale)
+      const next = yield* user(chat.id)
+      yield* text(chat.id, next.id, "new turn")
+      yield* revert.cleanup(stale)
+      const messages = yield* session.messages({ sessionID: chat.id })
+      expect(messages.map((message) => message.info.id)).toEqual([next.id])
+      expect(messages[0].parts).toHaveLength(1)
+    }),
+  )
+
+  it.live(
+    "cleanup cannot delete the message an active runner is still writing",
+    provideTmpdirInstance((dir) =>
+      Effect.gen(function* () {
+        const session = yield* Session.Service
+        const revert = yield* SessionRevert.Service
+        const runState = yield* SessionRunState.Service
+        const chat = yield* session.create({})
+        const input = yield* user(chat.id)
+        const output = yield* assistant(chat.id, input.id, dir)
+        yield* session.setRevert({ sessionID: chat.id, revert: { messageID: input.id }, summary: undefined })
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const result = { info: output, parts: [] }
+        yield* Effect.gen(function* () {
+          const running = yield* runState
+            .ensureRunning(
+              chat.id,
+              Effect.succeed(result),
+              Effect.gen(function* () {
+                yield* Deferred.succeed(started, undefined)
+                yield* Deferred.await(release)
+                yield* session.updatePart({
+                  id: PartID.ascending(),
+                  sessionID: chat.id,
+                  messageID: output.id,
+                  type: "text",
+                  text: "late output is still attached to its message",
+                })
+                return result
+              }),
+            )
+            .pipe(Effect.exit, Effect.forkChild)
+          yield* Deferred.await(started)
+          const cleanup = yield* revert.cleanup(yield* session.get(chat.id)).pipe(Effect.exit)
+          const messages = yield* session.messages({ sessionID: chat.id })
+          yield* Deferred.succeed(release, undefined)
+          const exit = yield* Fiber.join(running)
+          expect(Exit.isFailure(cleanup)).toBe(true)
+          if (Exit.isFailure(cleanup)) expect(Cause.squash(cleanup.cause)).toBeInstanceOf(Session.BusyError)
+          expect(messages.map((m) => m.info.id)).toContain(output.id)
+          expect(Exit.isSuccess(exit)).toBe(true)
+          yield* revert.cleanup(yield* session.get(chat.id))
+          expect(yield* session.messages({ sessionID: chat.id })).toHaveLength(0)
+        }).pipe(Effect.ensuring(Deferred.succeed(release, undefined)))
+      }),
+    ),
+  )
+
   it.live(
     "should properly handle compact command after revert",
     provideTmpdirInstance(

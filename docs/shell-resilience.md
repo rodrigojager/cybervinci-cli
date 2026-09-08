@@ -1,5 +1,9 @@
 # Shell execution resilience
 
+The installation record below describes the first candidate. On September 8 it
+was superseded by `resilience.2`; see [summary lifecycle safety](summary-lifecycle-safety.md)
+for the current candidate, additional fixes, and verification evidence.
+
 This change is developed from `d11952a0ba56d8b60d6287566275a4ba5729c4e2`
 in the isolated `shell-resilience` worktree. It does not migrate session data,
 change OAuth/account-pool state, or restart an existing CyberVinci process.

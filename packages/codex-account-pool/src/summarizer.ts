@@ -84,6 +84,38 @@ type Failure = {
 
 type RunResult = { type: "complete" } | { type: "deferred"; nextAttemptAt: number; error: string }
 
+type InternalRun = {
+  id: string
+  parentID: string
+  completed: boolean
+  joined: Promise<void>
+  abort?: Promise<boolean>
+  cleanup?: Promise<boolean>
+}
+
+class CleanupPending extends Error {
+  constructor() {
+    super("Summarizer cancellation is not confirmed; preserving the internal session")
+  }
+}
+
+async function bounded<T>(work: Promise<T>, timeoutMs: number, controller?: AbortController): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller?.abort()
+          reject(new Error("Summarizer timeout"))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 export class SummaryCoordinator {
   readonly instanceID = `${hostname()}:${process.pid}:${randomUUID()}`
   private timer?: ReturnType<typeof setInterval>
@@ -92,6 +124,7 @@ export class SummaryCoordinator {
   private internalProfiles = new Map<string, ModelProfile>()
   private retryFailures = new Map<string, Error>()
   private waiters = new Map<string, Set<(completed: boolean) => void>>()
+  private pending = new Map<string, InternalRun>()
 
   constructor(
     private client: any,
@@ -100,6 +133,7 @@ export class SummaryCoordinator {
     private ledger = new LedgerStore(),
     private handoff = new HandoffStore(),
     private queue = new SummaryQueueStore(),
+    private cleanupTimeoutMs = 5000,
   ) {}
 
   start() {
@@ -134,9 +168,8 @@ export class SummaryCoordinator {
           : undefined
     if (retry !== undefined && !this.retryFailures.has(sessionID)) {
       this.retryFailures.set(sessionID, new Error(errorText(retry)))
-      await this.client.session
-        .abort({ path: { id: sessionID }, query: { directory: this.directory } })
-        .catch(() => {})
+      const run = [...this.pending.values()].find((run) => run.id === sessionID)
+      if (run) await this.abort(run)
     }
     return true
   }
@@ -242,6 +275,8 @@ export class SummaryCoordinator {
       path: { id: job.sessionID },
       query: { directory: this.directory },
     })
+    if (response?.error) throw response.error
+    if (!Array.isArray(response?.data)) throw new Error("Summarizer history returned no messages")
     const messages = (response.data ?? []).filter(
       (item: any) => !current.basedOnMessageID || item.info.id > current.basedOnMessageID,
     )
@@ -328,6 +363,16 @@ export class SummaryCoordinator {
       await this.queue.clear(profile)
       return { type: "success" as const, summary }
     } catch (error) {
+      if (error instanceof CleanupPending) {
+        return {
+          type: "failure" as const,
+          failure: {
+            category: "timeout" as const,
+            message: error.message,
+            blockedUntil: Date.now() + settings.summarizer.failureCooldownMs,
+          },
+        }
+      }
       const kind = category(error)
       const message = redact(errorText(error)).slice(0, 500)
       const cooldown =
@@ -368,41 +413,54 @@ export class SummaryCoordinator {
   }
 
   private async invoke(parentID: string, profile: ModelProfile, prompt: string, timeoutMs: number) {
+    const previous = this.pending.get(parentID)
+    if (previous && !(await this.cleanup(previous))) throw new CleanupPending()
     const created = await this.client.session.create({
       body: { parentID, title: "[internal] handoff summarizer" },
       query: { directory: this.directory },
     })
-    const id = created.data.id
+    if (created?.error) throw created.error
+    const id = created?.data?.id
+    if (typeof id !== "string" || !id) throw new Error("Summarizer create returned no session ID")
     this.internal.add(id)
     this.internalProfiles.set(id, profile)
+    const run: InternalRun = { id, parentID, completed: false, joined: Promise.resolve() }
+    this.pending.set(parentID, run)
     try {
-      const request = this.client.session.prompt({
-        path: { id },
-        query: { directory: this.directory },
-        body: {
-          agent: "handoff-summarizer",
-          model: { providerID: profile.providerID, modelID: profile.modelID },
-          variant: profile.variant,
-          tools: { bash: false, read: false, edit: false, write: false, task: false, webfetch: false, websearch: false },
-          parts: [{ type: "text", text: prompt }],
+      const request = Promise.resolve().then(() =>
+        this.client.session.prompt({
+          path: { id },
+          query: { directory: this.directory },
+          body: {
+            agent: "handoff-summarizer",
+            model: { providerID: profile.providerID, modelID: profile.modelID },
+            variant: profile.variant,
+            tools: {
+              bash: false,
+              read: false,
+              edit: false,
+              write: false,
+              task: false,
+              webfetch: false,
+              websearch: false,
+            },
+            parts: [{ type: "text", text: prompt }],
+          },
+        }),
+      )
+      // Keep the prompt transport alive while abort joins the server-side writer.
+      run.joined = request.then(
+        (response: any) => {
+          run.completed = Boolean(response?.data)
         },
-      })
-      let timeoutID: ReturnType<typeof setTimeout> | undefined
-      let response: any
-      try {
-        response = await Promise.race([
-          request,
-          new Promise((_, reject) => {
-            timeoutID = setTimeout(() => reject(new Error("Summarizer timeout")), timeoutMs)
-          }),
-        ])
-      } finally {
-        if (timeoutID) clearTimeout(timeoutID)
-      }
+        () => {},
+      )
+      const response: any = await bounded(request, timeoutMs)
       const retryFailure = this.retryFailures.get(id)
       if (retryFailure) throw retryFailure
-      if (response.data?.info?.error) throw response.data.info.error
-      const text = (response.data?.parts ?? [])
+      if (response?.error) throw response.error
+      if (response?.data?.info?.error) throw response.data.info.error
+      const text = (response?.data?.parts ?? [])
         .filter((part: any) => part.type === "text")
         .map((part: any) => part.text)
         .join("\n")
@@ -410,10 +468,79 @@ export class SummaryCoordinator {
     } catch (error) {
       throw this.retryFailures.get(id) ?? error
     } finally {
-      await this.client.session.delete({ path: { id }, query: { directory: this.directory } }).catch(() => {})
-      this.internal.delete(id)
-      this.internalProfiles.delete(id)
-      this.retryFailures.delete(id)
+      if (!(await this.cleanup(run))) {
+        // A late normal response is still proof that the writer has finished.
+        // Reap it without needing a new user turn or another model request.
+        void run.joined.then(() => {
+          if (run.completed && this.pending.get(parentID) === run) void this.cleanup(run)
+        })
+      }
     }
+  }
+
+  private abort(run: InternalRun): Promise<boolean> {
+    if (run.abort) return run.abort
+    const controller = new AbortController()
+    run.abort = bounded(
+      Promise.resolve().then(() =>
+        this.client.session.abort({
+          path: { id: run.id },
+          query: { directory: this.directory },
+          signal: controller.signal,
+        }),
+      ),
+      this.cleanupTimeoutMs,
+      controller,
+    ).then(
+      (response: any) => !response?.error && response?.data === true,
+      () => false,
+    )
+    return run.abort
+  }
+
+  private cleanup(run: InternalRun): Promise<boolean> {
+    if (run.cleanup) return run.cleanup
+    run.cleanup = this.finish(run).finally(() => {
+      run.cleanup = undefined
+    })
+    return run.cleanup
+  }
+
+  private async finish(run: InternalRun): Promise<boolean> {
+    if (!run.completed) {
+      const aborted = await this.abort(run)
+      const joined = await bounded(
+        run.joined.then(() => true),
+        this.cleanupTimeoutMs,
+      ).catch(() => false)
+      if (!run.completed && !(aborted && joined)) {
+        // Do not delete a possible writer or start its replacement on another model.
+        run.abort = undefined
+        return false
+      }
+    }
+    const controller = new AbortController()
+    const deleted = await bounded(
+      Promise.resolve().then(() =>
+        this.client.session.delete({
+          path: { id: run.id },
+          query: { directory: this.directory },
+          signal: controller.signal,
+        }),
+      ),
+      this.cleanupTimeoutMs,
+      controller,
+    ).then(
+      (response: any) => Boolean(response) && !response.error,
+      () => false,
+    )
+    if (deleted) {
+      this.internal.delete(run.id)
+      this.internalProfiles.delete(run.id)
+      this.retryFailures.delete(run.id)
+    }
+    // A failed delete may leave an inert internal record, but never an active writer.
+    if (this.pending.get(run.parentID) === run) this.pending.delete(run.parentID)
+    return true
   }
 }

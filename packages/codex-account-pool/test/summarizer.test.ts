@@ -56,7 +56,7 @@ async function fixture(run: (profile: string, parentID: string) => Promise<unkno
         const result = await run(`${body.model.providerID}/${body.model.modelID}`, parents.get(path.id) ?? "")
         return result ?? { data: { parts: [{ type: "text", text: JSON.stringify(summary) }] } }
       }),
-      abort: mock(async () => ({})),
+      abort: mock(async () => ({ data: true })),
       delete: mock(async () => ({})),
     },
   }
@@ -81,7 +81,7 @@ async function fixture(run: (profile: string, parentID: string) => Promise<unkno
     }),
   }
   const queue = new SummaryQueueStore(join(root, "summary-queue.json"))
-  const coordinator = new SummaryCoordinator(client, ".", async () => settings, ledger, handoff, queue)
+  const coordinator = new SummaryCoordinator(client, ".", async () => settings, ledger, handoff, queue, 30)
   return { coordinator, settings, saved, client, queue }
 }
 
@@ -102,6 +102,153 @@ describe("summary configuration", () => {
     expect(await coordinator.refresh("s")).toBe(true)
     expect(client.session.prompt).toHaveBeenCalledTimes(1)
     expect(saved.at(-1)?.value.generatedBy.slot).toBe("primary")
+  })
+})
+
+describe("summary lifecycle safety", () => {
+  test("history SDK failures defer the job instead of reporting a completed summary", async () => {
+    const { coordinator, settings, client, queue } = await fixture(async () => undefined)
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    client.session.messages.mockImplementation(async () => ({ error: { message: "history unavailable" } } as any))
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(client.session.create).not.toHaveBeenCalled()
+    expect((await queue.snapshot()).jobs[0].state).toBe("waiting")
+  })
+
+  test("timeout aborts and joins the prompt before deleting the temporary session", async () => {
+    const events: string[] = []
+    let release = () => {}
+    const { coordinator, settings, client } = await fixture(async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      events.push("joined")
+    })
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    settings.summarizer.timeoutMs = 20
+    client.session.abort.mockImplementation(async () => {
+      events.push("abort")
+      release()
+      return { data: true }
+    })
+    client.session.delete.mockImplementation(async () => {
+      events.push("delete")
+      return {}
+    })
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(events).toEqual(["abort", "joined", "delete"])
+    expect(coordinator.isInternal("child_1")).toBe(false)
+  })
+
+  test("unconfirmed cancellation preserves the writer and blocks fallback only for that parent", async () => {
+    let release = () => {}
+    let blocked = true
+    let joined = false
+    const { coordinator, settings, client } = await fixture(async (_profile, parent) => {
+      if (parent === "stuck" && blocked) {
+        blocked = false
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+        joined = true
+      }
+    })
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    settings.summarizer.fallback = { providerID: "fallback", modelID: "free" }
+    settings.summarizer.timeoutMs = 20
+    client.session.abort.mockImplementation(async () => ({ data: false }))
+    expect(await coordinator.refresh("stuck")).toBe(false)
+    expect(client.session.create).toHaveBeenCalledTimes(1)
+    expect(client.session.delete).not.toHaveBeenCalled()
+    expect(coordinator.isInternal("child_1")).toBe(true)
+    expect(await coordinator.refresh("other")).toBe(true)
+    expect(client.session.create).toHaveBeenCalledTimes(2)
+    release()
+    await waitFor(() => joined)
+    // A later retry can join the now-finished child and safely clean it up.
+    await coordinator.cancel("stuck")
+    expect(await coordinator.refresh("stuck")).toBe(true)
+    expect(client.session.delete.mock.calls.some(([input]: any) => input.path.id === "child_1")).toBe(true)
+  })
+
+  test("a successful abort without a joined prompt does not authorize deletion", async () => {
+    let release = () => {}
+    const { coordinator, settings, client } = await fixture(
+      async () =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        }),
+    )
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    settings.summarizer.timeoutMs = 20
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(client.session.abort).toHaveBeenCalledTimes(1)
+    expect(client.session.delete).not.toHaveBeenCalled()
+    release()
+    await waitFor(() => client.session.delete.mock.calls.length === 1)
+    expect(coordinator.isInternal("child_1")).toBe(false)
+  })
+
+  test("handles SDK error envelopes without masking the provider error as missing JSON", async () => {
+    const { coordinator, settings, saved, client } = await fixture(async () => ({
+      error: { message: "429 rate limit" },
+    }))
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(saved.at(-1)?.value.primaryFailure.category).toBe("rate_limit")
+    expect(client.session.abort).toHaveBeenCalledTimes(1)
+    expect(client.session.delete).toHaveBeenCalledTimes(1)
+  })
+
+  test("failed abort envelopes never delete a session whose prompt transport failed", async () => {
+    const { coordinator, settings, client } = await fixture(async () => {
+      throw new Error("connection lost")
+    })
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    client.session.abort.mockImplementation(async () => ({ error: { message: "server unavailable" } }) as any)
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(client.session.delete).not.toHaveBeenCalled()
+    expect(coordinator.isInternal("child_1")).toBe(true)
+  })
+
+  test("a hanging abort is bounded and cannot cause deletion or fallback overlap", async () => {
+    const { coordinator, settings, client } = await fixture(async () => {
+      throw new Error("connection lost")
+    })
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    settings.summarizer.fallback = { providerID: "fallback", modelID: "free" }
+    client.session.abort.mockImplementation(() => new Promise(() => {}))
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(client.session.create).toHaveBeenCalledTimes(1)
+    expect(client.session.delete).not.toHaveBeenCalled()
+  })
+
+  test("a hanging delete does not hold the summary queue forever", async () => {
+    const { coordinator, settings, client } = await fixture(async () => undefined)
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    client.session.delete.mockImplementation(() => new Promise(() => {}))
+    expect(await coordinator.refresh("first")).toBe(true)
+    expect(await coordinator.refresh("second")).toBe(true)
+    expect(client.session.prompt).toHaveBeenCalledTimes(2)
+  })
+
+  test("reports create error envelopes without attempting a prompt or delete", async () => {
+    const { coordinator, settings, client, saved } = await fixture(async () => undefined)
+    settings.summarizer.enabled = true
+    settings.summarizer.primary = { providerID: "primary", modelID: "free" }
+    client.session.create.mockImplementation(async () => ({ error: { message: "provider unavailable" } }) as any)
+    expect(await coordinator.refresh("s")).toBe(false)
+    expect(client.session.prompt).not.toHaveBeenCalled()
+    expect(client.session.delete).not.toHaveBeenCalled()
+    expect(saved.at(-1)?.value.primaryFailure.category).toBe("provider_unavailable")
   })
 })
 
@@ -206,7 +353,7 @@ describe("summary queue", () => {
     await waitFor(() => coordinator.isInternal("child_1"))
     client.session.abort.mockImplementationOnce(async () => {
       release({ data: { parts: [] } })
-      return {}
+      return { data: true }
     })
     expect(
       await coordinator.event({
