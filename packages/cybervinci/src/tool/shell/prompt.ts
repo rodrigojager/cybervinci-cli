@@ -16,6 +16,10 @@ export function parameterSchema() {
   return Schema.Struct({
     command: Schema.String.annotate({ description: "The command to execute" }),
     timeout: Schema.optional(PositiveInt).annotate({ description: "Optional timeout in milliseconds" }),
+    background: Schema.optional(Schema.Boolean).annotate({
+      description:
+        "Run asynchronously and return a job ID for shell_job status/wait/cancel. The command timeout still applies. Use only for independent work; do not repeat the command while its job is running.",
+    }),
     workdir: Schema.optional(Schema.String).annotate({
       description: `The working directory to run the command in. Defaults to the current directory. Use this instead of 'cd' commands.`,
     }),
@@ -273,19 +277,21 @@ function profile(name: string, platform: NodeJS.Platform, limits: Limits, defaul
 export function render(name: string, platform: NodeJS.Platform, limits: Limits, defaultTimeoutMs: number) {
   const selected = profile(name, platform, limits, defaultTimeoutMs)
   return {
-    description: renderPrompt(DESCRIPTION, {
-      intro: selected.intro,
-      os: platform,
-      shell: name,
-      tmp: Global.Path.tmp,
-      workdirSection: selected.workdirSection,
-      commandSection: selected.commandSection,
-      gitCommands: selected.gitCommands,
-      toolName: ShellID.ToolID,
-      gitCommandRestriction: selected.gitCommandRestriction,
-      createPrInstruction: selected.createPrInstruction,
-      createPrExample: selected.createPrExample,
-    }),
+    description:
+      renderPrompt(DESCRIPTION, {
+        intro: selected.intro,
+        os: platform,
+        shell: name,
+        tmp: Global.Path.tmp,
+        workdirSection: selected.workdirSection,
+        commandSection: selected.commandSection,
+        gitCommands: selected.gitCommands,
+        toolName: ShellID.ToolID,
+        gitCommandRestriction: selected.gitCommandRestriction,
+        createPrInstruction: selected.createPrInstruction,
+        createPrExample: selected.createPrExample,
+      }) +
+      "\n\nFor independent long-running work, background=true returns a process-local job ID promptly. Use shell_job (list/status/wait/cancel) to observe it and obtain its final output before dependent work. The command timeout remains in effect. Do not start a second copy or automatically replay a missing job after restart.",
     parameters: parameterSchema(),
   }
 }

@@ -1,7 +1,8 @@
 import { PermissionV1 } from "@cybervinci-ai/core/v1/permission"
 import { describe, expect } from "bun:test"
 import { LayerNode } from "@cybervinci-ai/core/effect/layer-node"
-import { Cause, Effect, Exit, Layer } from "effect"
+import { Cause, Effect, Exit, Layer, PlatformError } from "effect"
+import { ChildProcessSpawner, make, makeHandle } from "effect/unstable/process/ChildProcessSpawner"
 import type * as Scope from "effect/Scope"
 import os from "os"
 import path from "path"
@@ -21,6 +22,9 @@ import { testEffect } from "../lib/effect"
 import { Tool } from "@/tool/tool"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { InstanceStore } from "@/project/instance-store"
+import { ShellJobs } from "@/tool/shell/jobs"
+import { ShellJobTool } from "@/tool/shell-job"
+import { pollWithTimeout } from "../lib/effect"
 
 const shellLayer = Layer.mergeAll(
   LayerNode.compile(
@@ -32,6 +36,7 @@ const shellLayer = Layer.mergeAll(
       Config.node,
       Agent.node,
       RuntimeFlags.node,
+      ShellJobs.node,
     ]),
   ),
   testInstanceStoreLayer,
@@ -155,9 +160,10 @@ const withShell = <A, E, R>(item: { label: string; shell: string }, self: Effect
 const each = (
   name: string,
   fn: (item: { label: string; shell: string }) => Effect.Effect<void, unknown, ShellTestServices>,
+  timeout?: number,
 ) => {
   for (const item of shells) {
-    it.live(`${name} [${item.label}]`, () => withShell(item, fn(item)))
+    it.live(`${name} [${item.label}]`, () => withShell(item, fn(item)), timeout)
   }
 }
 
@@ -179,6 +185,112 @@ const mustTruncate = (result: {
     [`shell: ${process.env.SHELL || ""}`, `exit: ${String(result.metadata.exit)}`, "output:", result.output].join("\n"),
   )
 }
+
+describe("tool.shell resilience", () => {
+  it.live(
+    "a failed exit notification settles instead of becoming a timeout",
+    () =>
+      runIn(
+        projectRoot,
+        Effect.gen(function* () {
+          const spawner = yield* ChildProcessSpawner
+          const failure = PlatformError.systemError({
+            _tag: "Unknown",
+            module: "ChildProcess",
+            method: "exitCode",
+            cause: new Error("Process interrupted by an external signal"),
+          })
+          const simulated = make((command) =>
+            spawner.spawn(command).pipe(
+              Effect.map((handle) =>
+                makeHandle({
+                  ...handle,
+                  // Windows reports a numeric exit where POSIX reports signal failure.
+                  // Inject that notification only after the real fixture process exits.
+                  exitCode: handle.exitCode.pipe(Effect.andThen(Effect.fail(failure))),
+                }),
+              ),
+            ),
+          )
+          const output = yield* run({ command: fill("lines", 1), timeout: 1500 }).pipe(
+            Effect.provideService(ChildProcessSpawner, simulated),
+          )
+          expect(output.output).toContain("1")
+          expect(output.metadata).toMatchObject({ status: "error", timedOut: false, exit: null })
+          expect(output.metadata.executionError).toBeDefined()
+        }),
+      ),
+    15_000,
+  )
+
+  each(
+    "background jobs are observable and cancellable without blocking the next command",
+    (item) =>
+      Effect.gen(function* () {
+        const tmp = yield* tmpdirScoped()
+        const script = path.join(tmp, "long-command.js")
+        yield* Effect.promise(() => Bun.write(script, 'console.log("READY"); setTimeout(()=>{},20000)'))
+        return yield* runIn(
+          tmp,
+          Effect.gen(function* () {
+            const jobs = yield* ShellJobs.Service
+            const control = yield* Tool.init(yield* ShellJobTool)
+            const next = { ...ctx, callID: crypto.randomUUID() }
+            const command = `${PS.has(item.label) ? "& " : ""}${bin} ${quote(script)}`
+            const started = yield* run({ command, background: true, timeout: 30_000 }, next)
+            expect(started.metadata.status).toBe("running")
+            const jobID = started.metadata.jobId
+            if (typeof jobID !== "string") throw new Error("Missing shell job ID")
+            yield* pollWithTimeout(
+              jobs
+                .get(next.sessionID, jobID)
+                .pipe(Effect.map((job) => (job?.output.includes("READY") ? true : undefined))),
+              "background command did not become ready",
+            )
+            const listed = yield* control.execute({ action: "list" }, next)
+            expect(listed.output).toContain(jobID)
+            const observed = yield* control.execute({ action: "wait", job_id: jobID, wait_ms: 0 }, next)
+            expect(observed.metadata.status).toBe("running")
+            const cancelled = yield* control.execute({ action: "cancel", job_id: jobID }, next)
+            expect(cancelled.metadata).toMatchObject({ status: "cancelled", terminationConfirmed: true })
+            expect(cancelled.output).toContain("READY")
+            const after = yield* run({ command: fill("lines", 1) })
+            expect(after.metadata.exit).toBe(0)
+            expect(after.output.trim()).toBe("1")
+          }),
+        )
+      }),
+    15_000,
+  )
+
+  it.live(
+    "a stalled progress update cannot block command completion",
+    () =>
+      runIn(
+        projectRoot,
+        Effect.gen(function* () {
+          const started = Date.now()
+          const output = yield* run(
+            { command: fill("lines", 1), timeout: 5000 },
+            { ...ctx, metadata: () => Effect.never },
+          )
+          expect(output.output).toContain("1")
+          expect(Date.now() - started).toBeLessThan(10_000)
+        }),
+      ),
+    15_000,
+  )
+
+  it.live("an already cancelled invocation does not launch a command", () =>
+    Effect.gen(function* () {
+      const tmp = yield* tmpdirScoped()
+      const cancelled = new AbortController()
+      cancelled.abort()
+      const error = yield* runIn(tmp, fail({ command: "echo must-not-run" }, { ...ctx, abort: cancelled.signal }))
+      expect(error.message).toContain("cancelled before launch")
+    }),
+  )
+})
 
 describe("tool.shell", () => {
   each("basic", () =>
@@ -1033,7 +1145,8 @@ describe("tool.shell abort", () => {
             },
           )
           expect(res.output).toContain("before")
-          expect(res.output).toContain("User aborted the command")
+          expect(res.output).toContain("Command cancelled")
+          expect(res.metadata).toMatchObject({ status: "cancelled", cancelled: true, terminationConfirmed: true })
           expect(collected.length).toBeGreaterThan(0)
         }),
       ),

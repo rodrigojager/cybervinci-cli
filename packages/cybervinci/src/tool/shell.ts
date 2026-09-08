@@ -1,4 +1,4 @@
-import { Effect, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Stream } from "effect"
 import os from "os"
 import { createWriteStream } from "node:fs"
 import * as Tool from "./tool"
@@ -21,6 +21,8 @@ import { ChildProcess } from "effect/unstable/process"
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { ShellPrompt, type Parameters } from "./shell/prompt"
 import { BashArity } from "@/permission/arity"
+import { CrossSpawnSpawner } from "@cybervinci-ai/core/cross-spawn-spawner"
+import { ShellJobs } from "./shell/jobs"
 
 export { Parameters } from "./shell/prompt"
 
@@ -344,6 +346,7 @@ export const ShellTool = Tool.define(
     const trunc = yield* Truncate.Service
     const plugin = yield* Plugin.Service
     const flags = yield* RuntimeFlags.Service
+    const jobs = yield* ShellJobs.Service
     const defaultTimeoutMs = flags.bashDefaultTimeoutMs ?? 2 * 60 * 1000
 
     const cygpath = Effect.fn("ShellTool.cygpath")(function* (shell: string, text: string) {
@@ -435,6 +438,7 @@ export const ShellTool = Tool.define(
       },
       ctx: Tool.Context,
     ) {
+      if (ctx.abort.aborted) return yield* Effect.die(new Error("Command cancelled before launch"))
       const limits = yield* trunc.limits()
       const keep = limits.maxBytes * 2
       let full = ""
@@ -446,6 +450,16 @@ export const ShellTool = Tool.define(
       let cut = false
       let expired = false
       let aborted = false
+      let terminationError = ""
+      let executionError = ""
+      let outputError = ""
+      let pid: number | undefined
+      const publish = (input: { title?: string; metadata?: Record<string, unknown> }) =>
+        ctx.metadata(input).pipe(
+          Effect.timeoutOption(1000),
+          Effect.catchCause(() => Effect.void),
+          Effect.asVoid,
+        )
 
       const closeSink = Effect.fnUntraced(function* () {
         const stream = sink
@@ -459,6 +473,7 @@ export const ShellTool = Tool.define(
               const done = () => {
                 if (settled) return
                 settled = true
+                clearTimeout(timer)
                 stream.off("close", done)
                 stream.off("error", done)
                 stream.off("finish", done)
@@ -467,12 +482,18 @@ export const ShellTool = Tool.define(
               stream.once("close", done)
               stream.once("error", done)
               stream.once("finish", done)
+              const timer = setTimeout(() => {
+                outputError ||= "Timed out flushing the output file"
+                stream.destroy()
+                done()
+              }, CrossSpawnSpawner.OUTPUT_DRAIN_TIMEOUT_MS)
+              timer.unref()
               stream.end(done)
             }),
         ).pipe(Effect.catch(() => Effect.void))
       })
 
-      yield* ctx.metadata({
+      yield* publish({
         metadata: {
           output: "",
         },
@@ -481,9 +502,11 @@ export const ShellTool = Tool.define(
       const code: number | null = yield* Effect.scoped(
         Effect.gen(function* () {
           yield* Effect.addFinalizer(closeSink)
+          if (ctx.abort.aborted) return yield* Effect.die(new Error("Command cancelled before launch"))
           const handle = yield* spawner.spawn(cmd(input.shell, input.command, input.cwd, input.env))
+          pid = Number(handle.pid)
 
-          yield* Effect.forkScoped(
+          const output = yield* Effect.forkScoped(
             Stream.runForEach(Stream.decodeText(handle.all), (chunk) => {
               const size = Buffer.byteLength(chunk, "utf-8")
               list.push({ text: chunk, size })
@@ -508,25 +531,32 @@ export const ShellTool = Tool.define(
                         file = next
                         cut = true
                         sink = createWriteStream(next, { flags: "a" })
+                        sink.on("error", (error) => {
+                          outputError ||= error.message
+                        })
                         full = ""
-                      }),
-                    ),
-                    Effect.andThen(
-                      ctx.metadata({
-                        metadata: {
-                          output: last,
-                        },
                       }),
                     ),
                   )
                 }
               }
 
-              return ctx.metadata({
-                metadata: {
-                  output: last,
-                },
-              })
+              return Effect.void
+            }),
+          )
+
+          // Coalesce progress independently of pipe consumption: a slow UI/DB
+          // must not backpressure the child or lose its final output.
+          yield* Effect.forkScoped(
+            Effect.gen(function* () {
+              let reported: string | undefined
+              while (true) {
+                if (reported !== last) {
+                  reported = last
+                  yield* publish({ metadata: { output: reported, pid, phase: "running", timeout: input.timeout } })
+                }
+                yield* Effect.sleep(50)
+              }
             }),
           )
 
@@ -540,31 +570,59 @@ export const ShellTool = Tool.define(
           const timeout = Effect.sleep(`${input.timeout + 100} millis`)
 
           const exit = yield* Effect.raceAll([
-            handle.exitCode.pipe(Effect.map((code) => ({ kind: "exit" as const, code }))),
+            // raceAll waits for a success. A signalled/failed OS exit must also
+            // settle this race, not be ignored until the command timeout wins.
+            handle.exitCode.pipe(
+              Effect.exit,
+              Effect.map((result) => ({ kind: "exit" as const, result })),
+            ),
             abort.pipe(Effect.map(() => ({ kind: "abort" as const, code: null }))),
             timeout.pipe(Effect.map(() => ({ kind: "timeout" as const, code: null }))),
           ])
 
-          if (exit.kind === "abort") {
-            aborted = true
-            yield* handle.kill({ forceKillAfter: "3 seconds" }).pipe(Effect.orDie)
-          }
-          if (exit.kind === "timeout") {
-            expired = true
-            yield* handle.kill({ forceKillAfter: "3 seconds" }).pipe(Effect.orDie)
+          if (exit.kind !== "exit") {
+            aborted = exit.kind === "abort"
+            expired = exit.kind === "timeout"
+            yield* handle.kill({ forceKillAfter: "3 seconds" }).pipe(
+              Effect.catch((error) =>
+                Effect.sync(() => {
+                  terminationError = error.message
+                }),
+              ),
+            )
           }
 
-          return exit.kind === "exit" ? exit.code : null
+          // `exitCode` now means OS exit, not EOF. Let the collectors retain the
+          // final chunks, but never wait forever on inherited pipes or metadata.
+          const drained = yield* Fiber.await(output).pipe(
+            Effect.timeoutOption(CrossSpawnSpawner.OUTPUT_DRAIN_TIMEOUT_MS),
+          )
+          if (drained._tag === "None")
+            outputError ||= "Output collection exceeded its post-exit deadline; output may be incomplete"
+          else if (Exit.isFailure(drained.value)) outputError ||= String(Cause.squash(drained.value.cause))
+
+          if (exit.kind !== "exit") return null
+          if (Exit.isSuccess(exit.result)) return exit.result.value
+          executionError = String(Cause.squash(exit.result.cause))
+          return null
         }),
       ).pipe(Effect.orDie)
 
+      yield* publish({ metadata: { output: last, pid, phase: "finished" } })
+
       const meta: string[] = []
-      if (expired) {
+      if (terminationError) {
+        meta.push(
+          `Command stopped responding; termination of process ${pid} could not be confirmed. Do NOT automatically retry this command: it may still be running. ${terminationError}`,
+        )
+      } else if (expired) {
         meta.push(
           `shell tool terminated command after exceeding timeout ${input.timeout} ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.`,
         )
       }
-      if (aborted) meta.push("User aborted the command")
+      if (aborted && !terminationError) meta.push("Command cancelled")
+      if (executionError) meta.push(`Command ended with an execution error: ${executionError}`)
+      if (outputError) meta.push(`Output capture incomplete: ${outputError}`)
       const raw = list.map((item) => item.text).join("")
       const end = tail(raw, limits.maxLines, limits.maxBytes)
       if (end.cut) cut = true
@@ -587,6 +645,21 @@ export const ShellTool = Tool.define(
         metadata: {
           output: last || preview(output),
           exit: code,
+          pid,
+          status: terminationError
+            ? "termination_unconfirmed"
+            : expired
+              ? "timed_out"
+              : aborted
+                ? "cancelled"
+                : outputError || executionError
+                  ? "error"
+                  : "completed",
+          timedOut: expired,
+          cancelled: aborted,
+          terminationConfirmed: !terminationError,
+          ...(executionError ? { executionError } : {}),
+          ...(outputError ? { outputError } : {}),
           truncated: cut,
           ...(cut && file ? { outputPath: file } : {}),
         },
@@ -606,8 +679,18 @@ export const ShellTool = Tool.define(
         return {
           description: prompt.description,
           parameters: prompt.parameters,
-          execute: (params: Parameters, ctx: Tool.Context) =>
+          execute: (
+            params: Parameters,
+            ctx: Tool.Context,
+          ): Effect.Effect<
+            Tool.ExecuteResult<{
+              exit?: number | null
+              truncated?: boolean
+              [key: string]: unknown
+            }>
+          > =>
             Effect.gen(function* () {
+              if (ctx.abort.aborted) return yield* Effect.die(new Error("Command cancelled before launch"))
               const instanceCtx = yield* InstanceState.context
               const cwd = params.workdir
                 ? yield* resolvePath(params.workdir, instanceCtx.directory, shell)
@@ -628,16 +711,20 @@ export const ShellTool = Tool.define(
                 }),
               )
 
-              return yield* run(
-                {
-                  shell,
-                  command: params.command,
-                  cwd,
-                  env: yield* shellEnv(ctx, cwd),
-                  timeout,
-                },
-                ctx,
-              )
+              const input = {
+                shell,
+                command: params.command,
+                cwd,
+                env: yield* shellEnv(ctx, cwd),
+                timeout,
+              }
+              if (!params.background) return yield* run(input, ctx)
+              const job = yield* jobs.start(params.command, ctx, (next) => run(input, next))
+              return {
+                title: params.command,
+                metadata: { ...job.metadata, background: true, jobId: job.id, status: job.status },
+                output: `Shell job ${job.id}: ${job.status}. Use shell_job to inspect, wait, or cancel. The command timeout still applies. This job is local to this session and process; do not rerun automatically after restart.\n${job.output}`,
+              }
             }),
         }
       })

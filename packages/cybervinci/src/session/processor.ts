@@ -47,10 +47,7 @@ export function sessionDeadlinePolicy(env: NodeJS.ProcessEnv = process.env) {
   return {
     providerIdleMs: positiveInteger(env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS, DEFAULT_PROVIDER_IDLE_TIMEOUT_MS),
     cycleMaximumMs: optionalPositiveInteger(env.CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS),
-    terminalPersistMs: positiveInteger(
-      env.CYBERVINCI_TERMINAL_PERSIST_TIMEOUT_MS,
-      DEFAULT_TERMINAL_PERSIST_TIMEOUT_MS,
-    ),
+    terminalPersistMs: positiveInteger(env.CYBERVINCI_TERMINAL_PERSIST_TIMEOUT_MS, DEFAULT_TERMINAL_PERSIST_TIMEOUT_MS),
     cleanupMs: positiveInteger(env.CYBERVINCI_CLEANUP_TIMEOUT_MS, DEFAULT_CLEANUP_TIMEOUT_MS),
   }
 }
@@ -87,19 +84,12 @@ export type ToolOutput = {
 
 export interface Handle {
   readonly message: SessionV1.Assistant
-  readonly startToolCall: (
-    toolCallID: string,
-    name: string,
-    input: Record<string, unknown>,
-  ) => Effect.Effect<void>
+  readonly startToolCall: (toolCallID: string, name: string, input: Record<string, unknown>) => Effect.Effect<void>
   readonly updateToolCall: (
     toolCallID: string,
     update: (part: SessionV1.ToolPart) => SessionV1.ToolPart,
   ) => Effect.Effect<SessionV1.ToolPart | undefined>
-  readonly completeToolCall: (
-    toolCallID: string,
-    output: ToolOutput,
-  ) => Effect.Effect<void>
+  readonly completeToolCall: (toolCallID: string, output: ToolOutput) => Effect.Effect<void>
   readonly failToolCall: (
     toolCallID: string,
     error: unknown,
@@ -191,7 +181,8 @@ const layer = Layer.effect(
       let aborted = false
       let cleanupError: unknown
       const deadlines = sessionDeadlinePolicy()
-      let providerActivityAt = Date.now()
+      // Elapsed-time supervision must not depend on wall-clock corrections.
+      let providerActivityAt = performance.now()
       let providerEventInFlight = false
       const toolCallLock = KeyedMutex.makeUnsafe<string>()
 
@@ -205,7 +196,7 @@ const layer = Layer.effect(
         const call = ctx.toolcalls[toolCallID]
         if (call) ctx.settledToolcalls.add(toolCallID)
         delete ctx.toolcalls[toolCallID]
-        if (call) providerActivityAt = Date.now()
+        if (call) providerActivityAt = performance.now()
         if (call) yield* Deferred.succeed(call.done, undefined).pipe(Effect.ignore)
       })
 
@@ -812,16 +803,14 @@ const layer = Layer.effect(
           { concurrency: "unbounded" },
         )
 
-        const terminalError = cleanupError instanceof SessionDeadlineError ? cleanupError : new Error("Tool execution aborted")
+        const terminalError =
+          cleanupError instanceof SessionDeadlineError ? cleanupError : new Error("Tool execution aborted")
         yield* Effect.forEach(
           Object.keys(ctx.toolcalls),
           (toolCallID) =>
-            failToolCall(
-              toolCallID,
-              terminalError,
-              aborted ? { interrupted: true } : {},
-              { allowClaimWhenClosed: true },
-            ),
+            failToolCall(toolCallID, terminalError, aborted ? { interrupted: true } : {}, {
+              allowClaimWhenClosed: true,
+            }),
           { concurrency: "unbounded" },
         )
         if (Object.keys(ctx.toolcalls).length) {
@@ -874,18 +863,18 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            providerActivityAt = Date.now()
+            providerActivityAt = performance.now()
             const drain = llm.stream(streamInput).pipe(
               Stream.tap((event) =>
                 Effect.sync(() => {
                   providerEventInFlight = true
-                  providerActivityAt = Date.now()
+                  providerActivityAt = performance.now()
                 }).pipe(
                   Effect.andThen(handleEvent(event)),
                   Effect.ensuring(
                     Effect.sync(() => {
                       providerEventInFlight = false
-                      providerActivityAt = Date.now()
+                      providerActivityAt = performance.now()
                     }),
                   ),
                 ),
@@ -898,12 +887,16 @@ const layer = Layer.effect(
             const watchdog = Effect.gen(function* () {
               while (true) {
                 yield* Effect.sleep(Math.max(1, Math.floor(deadlines.providerIdleMs / 4)))
-                const localToolActive = Object.values(ctx.toolcalls).some((call) => !call.providerExecuted)
+                // A claimed terminal outcome means execution has finished, even
+                // if persistence is still settling. It is not a live local tool.
+                const localToolActive = Object.values(ctx.toolcalls).some(
+                  (call) => !call.providerExecuted && !call.terminal,
+                )
                 if (providerEventInFlight || localToolActive) {
-                  providerActivityAt = Date.now()
+                  providerActivityAt = performance.now()
                   continue
                 }
-                if (Date.now() - providerActivityAt < deadlines.providerIdleMs) continue
+                if (performance.now() - providerActivityAt < deadlines.providerIdleMs) continue
                 return yield* Effect.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs))
               }
             })

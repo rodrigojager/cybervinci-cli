@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -195,7 +195,7 @@ describe("cross-spawn spawner", () => {
     fx.effect(
       "captures stdout via .all when no stderr",
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.make("echo", ["hello from stdout"])
+        const handle = yield* js('console.log("hello from stdout")')
         const all = yield* decodeByteStream(handle.all)
         expect(all).toBe("hello from stdout")
       }),
@@ -229,6 +229,101 @@ describe("cross-spawn spawner", () => {
   })
 
   describe("process control", () => {
+    fx.live("preserves detached descendants after normal launcher exit", () =>
+      Effect.gen(function* () {
+        const tmp = yield* Effect.acquireRelease(Effect.promise(tmpdir), (tmp) =>
+          Effect.promise(() => tmp[Symbol.asyncDispose]()),
+        )
+        const marker = path.join(tmp.path, "survived.txt")
+        const child = `setTimeout(()=>require("node:fs").writeFileSync(${JSON.stringify(marker)},"survived"),500)`
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            const handle = yield* js(
+              `const {spawn}=require("node:child_process"); const child=spawn(process.execPath,["-e",${JSON.stringify(child)}],{stdio:"ignore",detached:true}); child.unref()`,
+            )
+            expect(Number(yield* handle.exitCode)).toBe(0)
+          }),
+        )
+        const started = Date.now()
+        while (!(yield* Effect.promise(() => Bun.file(marker).exists())) && Date.now() - started < 5000)
+          yield* Effect.sleep(20)
+        expect(yield* Effect.promise(() => Bun.file(marker).text())).toBe("survived")
+      }),
+    )
+
+    fx.live("terminates only the owned running process tree on Windows", () =>
+      Effect.gen(function* () {
+        if (process.platform !== "win32") return
+        const handle = yield* js(
+          'const {spawn}=require("node:child_process"); const child=spawn(process.execPath,["-e","setTimeout(()=>{},10000)"],{stdio:"ignore"}); console.log(child.pid); setTimeout(()=>{},10000)',
+        )
+        const first = yield* Stream.runHead(Stream.splitLines(Stream.decodeText(handle.stdout)))
+        if (first._tag !== "Some") throw new Error("Child did not announce readiness")
+        const descendant = Number(first.value)
+        expect(Number.isSafeInteger(descendant) && descendant > 0).toBe(true)
+        const started = Date.now()
+        yield* handle.kill({ forceKillAfter: 1000 })
+        expect(yield* handle.isRunning).toBe(false)
+        expect(yield* Effect.promise(() => gone(descendant))).toBe(true)
+        expect(Date.now() - started).toBeLessThan(5_000)
+        // Repeated cleanup must not target a stale PID.
+        yield* handle.kill()
+      }),
+    )
+
+    test("keeps root exit and inherited pipe drain bounded under Node", async () => {
+      const build = await Bun.build({
+        entrypoints: [path.join(import.meta.dir, "../fixture/process-lifecycle.ts")],
+        target: "node",
+        external: ["effect", "effect/*", "@effect/platform-node", "@effect/platform-node/*", "cross-spawn"],
+      })
+      expect(build.success).toBe(true)
+      const child = Bun.spawn(["node", "--input-type=module"], {
+        cwd: path.join(import.meta.dir, "../.."),
+        stdin: new Blob([await build.outputs[0].text()]),
+        stdout: "pipe",
+        stderr: "pipe",
+      })
+      const [output, error, exit] = await Promise.all([
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+        child.exited,
+      ])
+      expect({ exit, error }).toEqual({ exit: 0, error: "" })
+      const events = output
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line))
+      expect(events[0]).toMatchObject({ event: "exit", exit: 0, running: false })
+      expect(events[0].elapsed).toBeLessThan(2_500)
+      expect(events[1].elapsed).toBeLessThan(4_500)
+      expect(events[1].bytes).toBeGreaterThan(0)
+    }, 15_000)
+
+    fx.live("observes root exit without waiting for inherited output pipes", () =>
+      Effect.gen(function* () {
+        const started = Date.now()
+        const handle = yield* js(
+          'const {spawn}=require("node:child_process"); const child=spawn(process.execPath,["-e","setTimeout(()=>{},6000)"],{stdio:["ignore","inherit","inherit"]}); child.unref(); console.log("root done"); process.exit(0)',
+        )
+        expect(Number(yield* handle.exitCode)).toBe(0)
+        expect(yield* handle.isRunning).toBe(false)
+        expect(Date.now() - started).toBeLessThan(2_500)
+      }),
+    )
+
+    fx.live("bounds output collection after root exit with inherited pipes", () =>
+      Effect.gen(function* () {
+        const started = Date.now()
+        const handle = yield* js(
+          'const {spawn}=require("node:child_process"); const child=spawn(process.execPath,["-e","setTimeout(()=>{},6000)"],{stdio:["ignore","inherit","inherit"]}); child.unref(); console.log("retained output"); process.exit(0)',
+        )
+        expect(yield* decodeByteStream(handle.stdout)).toBe("retained output")
+        expect(Number(yield* handle.exitCode)).toBe(0)
+        expect(Date.now() - started).toBeLessThan(4_500)
+      }),
+    )
+
     fx.effect(
       "kills a running process",
       Effect.gen(function* () {
