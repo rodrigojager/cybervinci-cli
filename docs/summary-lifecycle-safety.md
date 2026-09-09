@@ -1,5 +1,8 @@
 # Summary and history lifecycle safety
 
+The side-by-side candidate documented below was superseded on September 9 by
+`1.18.26-cybervinci.3`; see [provider recovery](provider-recovery.md).
+
 ## Incident and scope
 
 The September 8 investigation found a real `part` INSERT foreign-key failure:

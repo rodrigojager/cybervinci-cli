@@ -81,6 +81,13 @@ describe("session.retry.delay", () => {
     expect(SessionRetry.delay(1, error, 0)).toBe(2000)
   })
 
+  test("caps backoff when response headers contain no valid retry hint", () => {
+    const unrelated = apiError({ "content-type": "application/json" })
+    const invalid = apiError({ "retry-after": "not-a-number" })
+    expect(SessionRetry.delay(13, unrelated, 0)).toBe(SessionRetry.RETRY_MAX_DELAY_NO_HEADERS)
+    expect(SessionRetry.delay(13, invalid, 0)).toBe(SessionRetry.RETRY_MAX_DELAY_NO_HEADERS)
+  })
+
   test("uses retry-after values even when exceeding 10 minutes with headers", () => {
     const error = apiError({ "retry-after": "50" })
     expect(SessionRetry.delay(1, error)).toBe(50000)

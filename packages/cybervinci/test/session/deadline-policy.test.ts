@@ -5,6 +5,15 @@ test("session cycle deadline is disabled by default", () => {
   expect(sessionDeadlinePolicy({}).cycleMaximumMs).toBeUndefined()
 })
 
+test("provider cancellation has a short independent deadline", () => {
+  expect(sessionDeadlinePolicy({}).providerCancelMs).toBe(2_000)
+  expect(
+    sessionDeadlinePolicy({
+      CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS: "4500",
+    }).providerCancelMs,
+  ).toBe(4_500)
+})
+
 test("session cycle deadline remains available as an explicit guard", () => {
   expect(
     sessionDeadlinePolicy({

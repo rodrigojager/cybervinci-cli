@@ -427,6 +427,44 @@ describe("session HttpApi", () => {
     }).pipe(Effect.provide(TestLLMServer.layer), Effect.provide(AppNodeBuilder.build(CrossSpawnSpawner.node))),
   )
 
+  it.live("persists promptAsync input before a stalled provider can block the response", () =>
+    Effect.gen(function* () {
+      const llm = yield* TestLLMServer
+      yield* llm.hang
+      const directory = yield* tmpdirScoped({ git: true, config: testProviderConfig(llm.url) })
+      const session = yield* createSession({ title: "prompt async admission" }).pipe(provideInstanceEffect(directory))
+      const query = `?directory=${encodeURIComponent(directory)}`
+      const abort = request(`${pathFor(SessionPaths.abort, { sessionID: session.id })}${query}`, {
+        method: "POST",
+      }).pipe(Effect.ignore)
+
+      return yield* Effect.gen(function* () {
+        const response = yield* request(`${pathFor(SessionPaths.promptAsync, { sessionID: session.id })}${query}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            agent: "build",
+            model: { providerID: "test", modelID: "test-model" },
+            parts: [{ type: "text", text: "persist before provider execution" }],
+          }),
+        })
+        expect(response.status).toBe(204)
+
+        const messages = yield* Session.use
+          .messages({ sessionID: session.id })
+          .pipe(provideInstanceEffect(directory), Effect.orDie)
+        expect(
+          messages.some(
+            (message) =>
+              message.info.role === "user" &&
+              message.parts.some((part) => part.type === "text" && part.text === "persist before provider execution"),
+          ),
+        ).toBe(true)
+        yield* llm.wait(1).pipe(Effect.timeout("10 seconds"))
+      }).pipe(Effect.ensuring(abort))
+    }).pipe(Effect.provide(TestLLMServer.layer), Effect.provide(AppNodeBuilder.build(CrossSpawnSpawner.node))),
+  )
+
   it.instance(
     "returns v2 public request errors for cursor and workspace query failures",
     () =>

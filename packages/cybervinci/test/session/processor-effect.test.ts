@@ -236,6 +236,15 @@ const neverLLM = Layer.succeed(
 const neverEnv = LayerNode.compile(root, [...replacements, [LLM.node, neverLLM]])
 const itNever = testEffect(neverEnv)
 
+const slowCancelLLM = Layer.succeed(
+  LLM.Service,
+  LLM.Service.of({
+    stream: () => Stream.never.pipe(Stream.ensuring(Effect.sleep("1 second"))),
+  }),
+)
+const slowCancelEnv = LayerNode.compile(root, [...replacements, [LLM.node, slowCancelLLM]])
+const itSlowCancel = testEffect(slowCancelEnv)
+
 const boot = Effect.fn("test.boot")(function* () {
   const processors = yield* SessionProcessor.Service
   const session = yield* Session.Service
@@ -943,9 +952,7 @@ it.live("session.processor effect tests exclude local tool execution from the pr
 
           expect(yield* Fiber.join(run)).toBe("continue")
           expect(handle.message.error).toBeUndefined()
-          expect((yield* MessageV2.parts(msg.id)).find((part) => part.type === "tool")?.state.status).toBe(
-            "completed",
-          )
+          expect((yield* MessageV2.parts(msg.id)).find((part) => part.type === "tool")?.state.status).toBe("completed")
         }).pipe(
           Effect.ensuring(
             Effect.sync(() => {
@@ -1302,6 +1309,70 @@ itNever.live("session.processor effect tests retry a silent provider stream at t
             Effect.sync(() => {
               if (previous === undefined) delete process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
               else process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = previous
+            }),
+          ),
+        )
+      }),
+    { config: cfg },
+  ),
+)
+
+itSlowCancel.live("session.processor effect tests do not wait for a stuck provider cancellation before retrying", () =>
+  provideTmpdirInstance(
+    (dir) =>
+      Effect.gen(function* () {
+        const previousIdle = process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
+        const previousCancel = process.env.CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS
+        process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = "25"
+        process.env.CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS = "25"
+        return yield* Effect.gen(function* () {
+          const { processors, session, provider } = yield* boot()
+          const sts = yield* SessionStatus.Service
+          const chat = yield* session.create({})
+          const parent = yield* user(chat.id, "stuck provider cancellation")
+          const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+          const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+          const handle = yield* processors.create({
+            assistantMessage: msg,
+            sessionID: chat.id,
+            model: mdl,
+          })
+          const started = performance.now()
+          const run = yield* handle
+            .process({
+              user: {
+                id: parent.id,
+                sessionID: chat.id,
+                role: "user",
+                time: parent.time,
+                agent: parent.agent,
+                model: { providerID: ref.providerID, modelID: ref.modelID },
+              } satisfies SessionV1.User,
+              sessionID: chat.id,
+              model: mdl,
+              agent: agent(),
+              system: [],
+              messages: [{ role: "user", content: "stuck provider cancellation" }],
+              tools: {},
+            })
+            .pipe(Effect.forkChild)
+
+          yield* waitFor(
+            sts.get(chat.id).pipe(Effect.map((state) => (state.type === "retry" ? state : undefined))),
+            "stuck provider cancellation prevented retry",
+          )
+          expect(performance.now() - started).toBeLessThan(500)
+
+          yield* Fiber.interrupt(run)
+          expect(Exit.isFailure(yield* Fiber.await(run))).toBe(true)
+          expect(yield* sts.get(chat.id)).toMatchObject({ type: "idle" })
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (previousIdle === undefined) delete process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS
+              else process.env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS = previousIdle
+              if (previousCancel === undefined) delete process.env.CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS
+              else process.env.CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS = previousCancel
             }),
           ),
         )

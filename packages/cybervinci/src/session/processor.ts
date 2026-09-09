@@ -30,6 +30,7 @@ import { KeyedMutex } from "@cybervinci-ai/core/effect/keyed-mutex"
 
 const DOOM_LOOP_THRESHOLD = 3
 const DEFAULT_PROVIDER_IDLE_TIMEOUT_MS = 5 * 60 * 1000
+const DEFAULT_PROVIDER_CANCEL_TIMEOUT_MS = 2_000
 const DEFAULT_TERMINAL_PERSIST_TIMEOUT_MS = 1_000
 const DEFAULT_CLEANUP_TIMEOUT_MS = 15_000
 
@@ -46,6 +47,7 @@ function optionalPositiveInteger(value: string | undefined) {
 export function sessionDeadlinePolicy(env: NodeJS.ProcessEnv = process.env) {
   return {
     providerIdleMs: positiveInteger(env.CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS, DEFAULT_PROVIDER_IDLE_TIMEOUT_MS),
+    providerCancelMs: positiveInteger(env.CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS, DEFAULT_PROVIDER_CANCEL_TIMEOUT_MS),
     cycleMaximumMs: optionalPositiveInteger(env.CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS),
     terminalPersistMs: positiveInteger(env.CYBERVINCI_TERMINAL_PERSIST_TIMEOUT_MS, DEFAULT_TERMINAL_PERSIST_TIMEOUT_MS),
     cleanupMs: positiveInteger(env.CYBERVINCI_CLEANUP_TIMEOUT_MS, DEFAULT_CLEANUP_TIMEOUT_MS),
@@ -181,9 +183,7 @@ const layer = Layer.effect(
       let aborted = false
       let cleanupError: unknown
       const deadlines = sessionDeadlinePolicy()
-      // Elapsed-time supervision must not depend on wall-clock corrections.
-      let providerActivityAt = performance.now()
-      let providerEventInFlight = false
+      let activeProviderStream = 0
       const toolCallLock = KeyedMutex.makeUnsafe<string>()
 
       const parse = (e: unknown) =>
@@ -196,7 +196,6 @@ const layer = Layer.effect(
         const call = ctx.toolcalls[toolCallID]
         if (call) ctx.settledToolcalls.add(toolCallID)
         delete ctx.toolcalls[toolCallID]
-        if (call) providerActivityAt = performance.now()
         if (call) yield* Deferred.succeed(call.done, undefined).pipe(Effect.ignore)
       })
 
@@ -863,21 +862,24 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            providerActivityAt = performance.now()
+            const streamID = ++activeProviderStream
+            let providerProgressAt = performance.now()
+            let providerEventInFlight = false
             const drain = llm.stream(streamInput).pipe(
               Stream.tap((event) =>
-                Effect.sync(() => {
+                Effect.suspend(() => {
+                  if (streamID !== activeProviderStream) return Effect.void
                   providerEventInFlight = true
-                  providerActivityAt = performance.now()
-                }).pipe(
-                  Effect.andThen(handleEvent(event)),
-                  Effect.ensuring(
-                    Effect.sync(() => {
-                      providerEventInFlight = false
-                      providerActivityAt = performance.now()
-                    }),
-                  ),
-                ),
+                  providerProgressAt = performance.now()
+                  return handleEvent(event).pipe(
+                    Effect.ensuring(
+                      Effect.sync(() => {
+                        providerEventInFlight = false
+                        providerProgressAt = performance.now()
+                      }),
+                    ),
+                  )
+                }),
               ),
               Stream.takeUntil(() => ctx.needsCompaction),
               Stream.runDrain,
@@ -893,14 +895,48 @@ const layer = Layer.effect(
                   (call) => !call.providerExecuted && !call.terminal,
                 )
                 if (providerEventInFlight || localToolActive) {
-                  providerActivityAt = performance.now()
+                  providerProgressAt = performance.now()
                   continue
                 }
-                if (performance.now() - providerActivityAt < deadlines.providerIdleMs) continue
-                return yield* Effect.fail(new SessionDeadlineError("provider_idle", deadlines.providerIdleMs))
+                if (performance.now() - providerProgressAt < deadlines.providerIdleMs) continue
+                return new SessionDeadlineError("provider_idle", deadlines.providerIdleMs)
               }
             })
-            yield* drain.pipe(Effect.raceFirst(watchdog))
+            // raceFirst waits for the losing effect's finalizers. Race a cheap
+            // Fiber.await and interrupt the detached stream separately so a
+            // provider whose cancel never settles cannot hold the watchdog.
+            const drainWorker = yield* drain.pipe(Effect.forkDetach({ startImmediately: true }))
+            const outcome = yield* Effect.raceFirst(
+              Fiber.await(drainWorker).pipe(Effect.as({ type: "drain" as const })),
+              watchdog.pipe(Effect.map((error) => ({ type: "watchdog" as const, error }))),
+            ).pipe(
+              Effect.ensuring(
+                Effect.sync(() => {
+                  // Ignore late events from a stream that outlived its deadline.
+                  if (activeProviderStream === streamID) activeProviderStream++
+                  drainWorker.interruptUnsafe()
+                }),
+              ),
+            )
+            if (outcome.type === "drain") return yield* Fiber.join(drainWorker)
+            yield* Effect.logWarning("provider idle watchdog restarting stream", {
+              sessionID: ctx.sessionID,
+              messageID: input.assistantMessage.id,
+              deadlineMs: deadlines.providerIdleMs,
+            })
+            yield* Fiber.await(drainWorker).pipe(
+              Effect.timeoutOrElse({
+                duration: deadlines.providerCancelMs,
+                orElse: () =>
+                  Effect.logWarning("provider stream cancellation did not settle before retry", {
+                    sessionID: ctx.sessionID,
+                    messageID: input.assistantMessage.id,
+                    deadlineMs: deadlines.providerCancelMs,
+                  }),
+              }),
+              Effect.asVoid,
+            )
+            return yield* Effect.fail(outcome.error)
           }).pipe(
             Effect.catchCauseIf(
               (cause) => !Cause.hasInterruptsOnly(cause),
@@ -915,13 +951,23 @@ const layer = Layer.effect(
                 maxRetries: streamInput.agent.name === "handoff-summarizer" ? 0 : undefined,
                 parse,
                 set: (info) => {
-                  return status.set(ctx.sessionID, {
-                    type: "retry",
+                  return Effect.logWarning("provider stream retry scheduled", {
+                    sessionID: ctx.sessionID,
+                    messageID: input.assistantMessage.id,
                     attempt: info.attempt,
-                    message: info.message,
-                    action: info.action,
                     next: info.next,
-                  })
+                    reason: info.message,
+                  }).pipe(
+                    Effect.andThen(
+                      status.set(ctx.sessionID, {
+                        type: "retry",
+                        attempt: info.attempt,
+                        message: info.message,
+                        action: info.action,
+                        next: info.next,
+                      }),
+                    ),
+                  )
                 },
               }),
             ),

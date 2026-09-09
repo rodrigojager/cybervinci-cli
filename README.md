@@ -76,12 +76,18 @@ CYBERVINCI_RELIABILITY_MODE=off|observe|enforce
 CYBERVINCI_MCP_MAX_TIMEOUT_MS=43200000
 CYBERVINCI_CANCEL_GRACE_MS=2000
 CYBERVINCI_PROVIDER_IDLE_TIMEOUT_MS=300000
-CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS=900000
+CYBERVINCI_PROVIDER_CANCEL_TIMEOUT_MS=2000
+# CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS is opt-in
 CYBERVINCI_TERMINAL_PERSIST_TIMEOUT_MS=1000
 CYBERVINCI_CLEANUP_TIMEOUT_MS=15000
 ```
 
-The default mode is `enforce`. Progress can renew an idle timeout, but it cannot renew the independent maximum deadline. Cancellation has a bounded grace period, and late tool results cannot overwrite an already settled terminal state.
+The default mode is `enforce`. Provider progress renews the idle watchdog; when
+that watchdog fires, CyberVinci bounds stream cancellation and starts a new
+provider attempt. Connection recovery continues until it succeeds or the user
+interrupts it. The independent whole-cycle deadline is disabled unless
+`CYBERVINCI_SESSION_CYCLE_TIMEOUT_MS` is explicitly set. Late tool results
+cannot overwrite an already settled terminal state.
 
 ## Built-in Codex account pool
 

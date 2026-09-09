@@ -1092,7 +1092,7 @@ export function Prompt(props: PromptProps) {
     } else {
       move.startSubmit()
       sdk.client.session
-        .prompt(
+        .promptAsync(
           {
             sessionID,
             ...selectedModel,

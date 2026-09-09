@@ -22,6 +22,7 @@ export interface RotationOptions {
   settings: () => Promise<Settings>
   bindings?: BindingStore
   quota?: QuotaService
+  streamCancelTimeoutMs?: number
   issuer?: string
   codexApiEndpoint?: string
   fetch?: typeof globalThis.fetch
@@ -71,12 +72,34 @@ function cancelledByCaller(input: RequestInfo | URL, init: RequestInit | undefin
 
 function cloneInput(input: RequestInfo | URL) { return input instanceof Request ? input.clone() : input }
 
+export const STREAM_CANCEL_TIMEOUT_MS = 2_000
+
+async function cancelWithDeadline(
+  stream: { cancel(reason?: unknown): Promise<void> } | null | undefined,
+  reason: unknown,
+  timeoutMs: number,
+) {
+  if (!stream) return
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      Promise.resolve().then(() => stream.cancel(reason)).catch(() => {}),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
 export function createRotatingFetch(store: AccountStore, options: RotationOptions) {
   const issuer = options.issuer ?? DEFAULT_ISSUER
   const endpoint = options.codexApiEndpoint ?? DEFAULT_CODEX_ENDPOINT
   const baseFetch = options.fetch ?? globalThis.fetch
   const bindings = options.bindings ?? new BindingStore()
   const quota = options.quota ?? new QuotaService(store, baseFetch)
+  const streamCancelTimeoutMs = options.streamCancelTimeoutMs ?? STREAM_CANCEL_TIMEOUT_MS
   async function refresh(account: Account, rejectedToken?: string): Promise<Account> {
     const lock = await FileLock.acquire(`refresh:${account.id}`, 20_000, 60_000)
     try {
@@ -156,7 +179,7 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
           account = result.account
           response = result.response
           if (response.status === 401 && account.refreshToken && replayable(input, init)) {
-            await response.body?.cancel().catch(() => {})
+            await cancelWithDeadline(response.body, undefined, streamCancelTimeoutMs)
             account = await refresh(account, account.accessToken)
             throwIfCancelled(input, init)
             const retry = await execute(account, cloneInput(input), init)
@@ -190,7 +213,7 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
           const reader = response.body.getReader()
           const body = new ReadableStream({
             async pull(controller) { try { const next = await reader.read(); if (next.done) { await release(); controller.close() } else controller.enqueue(next.value) } catch (error) { await release(); controller.error(error) } },
-            async cancel(reason) { await reader.cancel(reason).catch(() => {}); await release() },
+            async cancel(reason) { await cancelWithDeadline(reader, reason, streamCancelTimeoutMs); await release() },
           })
           const result = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
           streaming = true
@@ -217,13 +240,13 @@ export function createRotatingFetch(store: AccountStore, options: RotationOption
           }
           return response
         }
-        await response.body?.cancel().catch(() => {})
+        await cancelWithDeadline(response.body, undefined, streamCancelTimeoutMs)
         await release()
         const prepared = await options.prepareFailover?.({ sessionID: sid, from: account, to: next, requestInput: input, init })
         input = prepared?.requestInput ?? input
         init = prepared?.init ?? init
       } catch (error) {
-        await response?.body?.cancel().catch(() => {})
+        await cancelWithDeadline(response?.body, error, streamCancelTimeoutMs)
         throw error
       } finally {
         if (!streaming) await release()

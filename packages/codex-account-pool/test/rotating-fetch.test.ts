@@ -128,6 +128,38 @@ test("holds a cross-process reservation until the response stream is consumed", 
   expect(await bindings.activeReservations(account.id)).toHaveLength(0)
 })
 
+test("bounds a hanging response cancellation and releases its reservation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codex-cancel-deadline-"))
+  directories.push(directory)
+  const store = new AccountStore(join(directory, "accounts.json"))
+  const account = await store.add({ access: "first", refresh: "r1", expires: Date.now() + 60_000 })
+  const { BindingStore } = await import("../src/bindings")
+  const bindings = new BindingStore(join(directory, "bindings.json"))
+  let cancelled = false
+  const request = mock(async (url: RequestInfo | URL) => String(url).includes("wham/usage")
+    ? new Response(JSON.stringify({ rate_limit: { allowed: true } }))
+    : new Response(new ReadableStream({
+      cancel() {
+        cancelled = true
+        return new Promise<void>(() => {})
+      },
+    })))
+  const rotating = createRotatingFetch(store, {
+    fetch: request as unknown as typeof fetch,
+    bindings,
+    settings: async () => defaultSettings(),
+    streamCancelTimeoutMs: 25,
+  })
+  const response = await rotating("https://api.openai.com/v1/responses", { headers: { "session-id": "ses_a" } })
+  const started = performance.now()
+
+  await response.body?.cancel("watchdog")
+
+  expect(cancelled).toBe(true)
+  expect(performance.now() - started).toBeLessThan(500)
+  expect(await bindings.activeReservations(account.id)).toHaveLength(0)
+})
+
 test("does not poison accounts when the caller aborts with a provider timeout", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codex-caller-timeout-"))
   directories.push(directory)

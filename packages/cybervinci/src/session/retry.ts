@@ -78,8 +78,6 @@ export function delay(attempt: number, error?: SessionV1.APIError, random = Math
           return cap(Math.ceil(parsed))
         }
       }
-
-      return cap(exponential(attempt, random))
     }
   }
 
