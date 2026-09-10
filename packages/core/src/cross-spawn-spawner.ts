@@ -284,7 +284,6 @@ export const make = Effect.gen(function* () {
         // output handles and keep `close` pending after the root has exited.
         Deferred.doneUnsafe(signal, Exit.succeed(args))
         drain = setTimeout(() => closePipes(proc), OUTPUT_DRAIN_TIMEOUT_MS)
-        drain.unref()
       })
       proc.on("close", (...args) => {
         if (drain) clearTimeout(drain)

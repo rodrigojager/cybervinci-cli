@@ -20,6 +20,10 @@ exports[`tool parameters JSON Schema (wire shape) bash 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "background": {
+      "description": "Run asynchronously and return a job ID for shell_job status/wait/cancel. The command timeout still applies. Use only for independent work; do not repeat the command while its job is running.",
+      "type": "boolean",
+    },
     "command": {
       "description": "The command to execute",
       "type": "string",
