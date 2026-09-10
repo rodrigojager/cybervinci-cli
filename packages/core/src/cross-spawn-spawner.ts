@@ -100,7 +100,11 @@ export const OUTPUT_DRAIN_TIMEOUT_MS = 2_000
 export const PROCESS_KILL_GRACE_MS = 3_000
 
 function closePipes(proc: NodeChildProcess.ChildProcess) {
-  for (const stream of proc.stdio) stream?.destroy()
+  for (const stream of proc.stdio) {
+    if (!stream) continue
+    if ("push" in stream && typeof stream.push === "function") stream.push(null)
+    stream.destroy()
+  }
 }
 
 export const make = Effect.gen(function* () {
