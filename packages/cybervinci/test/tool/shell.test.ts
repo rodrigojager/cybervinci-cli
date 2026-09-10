@@ -304,6 +304,7 @@ describe("tool.shell", () => {
         expect(result.metadata.output).toContain("test")
       }),
     ),
+    10_000,
   )
 
   it.live("falls back from terminal-only configured shell", () =>

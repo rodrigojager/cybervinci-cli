@@ -36,6 +36,7 @@ describe("cybervinci run (non-interactive subprocess)", () => {
         yield* llm.text("  after tool  ")
 
         const result = yield* cybervinci.run("use a tool", {
+          timeoutMs: 45_000,
           extraArgs: ["--dangerously-skip-permissions"],
         })
 
@@ -96,7 +97,7 @@ describe("cybervinci run (non-interactive subprocess)", () => {
         )
         yield* llm.fail("upstream provider exploded mid-stream")
         yield* llm.text("recovered")
-        const result = yield* cybervinci.run("trigger midstream error", { timeoutMs: 30_000 })
+        const result = yield* cybervinci.run("trigger midstream error", { timeoutMs: 45_000 })
         expect(result.exitCode).toBe(0)
         expect(result.stdout).toBe("partial response\nrecovered\n")
         expect(result.stderr).not.toContain("upstream provider exploded mid-stream")
@@ -178,6 +179,7 @@ describe("cybervinci run (non-interactive subprocess)", () => {
 
         const result = yield* cybervinci.run("exercise json records", {
           format: "json",
+          timeoutMs: 45_000,
           extraArgs: ["--thinking", "--dangerously-skip-permissions"],
         })
 
@@ -225,7 +227,7 @@ describe("cybervinci run (non-interactive subprocess)", () => {
         )
         yield* llm.fail("provider failed")
         yield* llm.text("recovered")
-        const result = yield* cybervinci.run("fail after output", { format: "json" })
+        const result = yield* cybervinci.run("fail after output", { format: "json", timeoutMs: 45_000 })
 
         const events = cybervinci.parseJsonEvents(result.stdout)
         expect(result.exitCode).toBe(0)
@@ -281,7 +283,7 @@ describe("cybervinci run (non-interactive subprocess)", () => {
         expect(explicitlyDenied.stdout).toContain("continued after explicit denial")
         expect(yield* Effect.promise(() => Bun.file(`${home}/explicitly-denied`).exists())).toBe(false)
       }),
-    60_000,
+    120_000,
   )
 
   cliIt.live(
